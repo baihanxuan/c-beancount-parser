@@ -1,0 +1,6 @@
+test/**
+build/**
+.cache/**
+.vscode/**
+
+src/main.c
