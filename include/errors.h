@@ -7,7 +7,8 @@
 
 #include "parser.h"
 
-int CBP_Parser_RegisterError(CBP_Parser *parser, const char *what);
+// int CBP_Parser_RegisterError(CBP_Parser *parser, const char *what);
+int CBP_Parser_RegisterError(CBP_Parser* parser, const char* format, ...);
 
 int CBP_Parser_RegisterInvalidTypeError(CBP_Parser *parser,
                                         const char *object_name,

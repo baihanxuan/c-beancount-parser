@@ -441,14 +441,21 @@ int cbp_ProcessNormalDirective(CBP_Parser *parser, CBP_Array *tokens) {
 
   if (CBP_EqCstring(obj, "pad")) {
     // pad directive.
+    return HX_OK;
   }
 
   if (CBP_EqCstring(obj, "balance")) {
     // balance directive.
+    return HX_OK;
+  }
+
+  if (CBP_EqCstring(obj, "custom")) {
+    // custom directive - dummy.
+    return HX_OK;
   }
 
   CBP_Parser_RegisterUnknownArgumentError(parser, "directive type",
-                                          "* | open | pad | balance",
+                                          "* | open | pad | balance | custom",
                                           (const char *)obj->data);
 return_err:
   return HX_ERR;
@@ -575,8 +582,8 @@ int CBP_Parser_ParseUnindentedLine(CBP_Parser *parser, CBP_Array *tokens) {
       if (cbp_ProcessNormalDirective(parser, tokens) != HX_OK) {
         // for debugging only. to be changed in production build.
         // perror("Transaction definition parsing error");
-        CBP_Parser_RegisterError(parser,
-                                 "Transaction definition parsing error!");
+        // CBP_Parser_RegisterError(parser,
+        //                          "Transaction definition parsing error!");
         goto return_err;
       }
       return HX_OK;

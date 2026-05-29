@@ -108,7 +108,7 @@ char *CBP_ConcatPaths(int count, ...) {
     char *segment = va_arg(args, char *);
     u64 segment_len = strlen(segment);
     if (res == NULL) {
-      res = malloc(segment_len + 1);
+      res = calloc(segment_len + 1, sizeof(char));
       if (res == NULL) {
         goto return_null;
       }

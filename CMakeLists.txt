@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.1.2)
-project(CBeancountParser VERSION 1.0.0 LANGUAGES C)
+project(CBeancountParser VERSION 1.0.1 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 23)
 

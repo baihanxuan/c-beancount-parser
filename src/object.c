@@ -4,19 +4,16 @@
 
 #include "object.h"
 #include "macros.h"
-// #include <malloc.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-// #include <stdio.h>
-
-#define CBP_ObjectEqCValues_Meta(CTypeFnName, CBPObjEnum, CType)               \
+#define CBP_ObjectEqCValues_Meta(CTypeFnName, CBPObjEnum, CType, EqPredicate)  \
   int CBP_EqC##CTypeFnName(const CBP_Object *lhs, CType value) {               \
     if (lhs == NULL || lhs->type != CBPObjEnum || lhs->data == NULL) {         \
       return false;                                                            \
     }                                                                          \
-    return *(CType *)lhs->data == value;                                       \
+    return EqPredicate || *(CType *)lhs->data == value;                        \
   }
 
 #define CBP_ObjectDef_Meta(CBPObjFn, CBPObjEnum, CType)                        \
@@ -38,91 +35,78 @@
     return obj;                                                                \
   }
 
+#define CBP_ObjectDef_Cliche(target, CBPObjEnum, CBPElemSize, CBPDestroyFn,    \
+                             CBPCopyFn, ErrorGoto)                             \
+  {                                                                            \
+    target->type = CBPObjEnum;                                                 \
+    target->element_size = CBPElemSize;                                        \
+    CBP_PtrSafeAssign(void, target->data, calloc(1, CBPElemSize), ErrorGoto);  \
+    target->destroy_function = CBPDestroyFn;                                   \
+    target->copy_function = CBPCopyFn;                                         \
+  }
+
+/* CBP Object Creation */
 CBP_ObjectDef_Meta(Int, INT, i64);
 CBP_ObjectDef_Meta(Uint, UINT, u64);
 CBP_ObjectDef_Meta(Char, CHAR, char);
 
-CBP_ObjectEqCValues_Meta(int, INT, i64);
-CBP_ObjectEqCValues_Meta(uint, UINT, u64);
-CBP_ObjectEqCValues_Meta(char, CHAR, char);
-
 CBP_Object *CBP_GetString(const char *value) {
-  CBP_Object *obj = calloc(1, sizeof(CBP_Object));
-  if (obj == NULL) {
-    return NULL;
-  }
-  obj->type = STRING;
-  obj->element_size = sizeof(char) * (strlen(value) + 1);
-  obj->data = calloc(obj->element_size, sizeof(char));
-  obj->destroy_function = NULL;
-  obj->copy_function = NULL;
-  if (obj->data == NULL) {
-    free(obj);
-    return NULL;
-  }
-  // memset(obj->data, 0, obj->element_size);
+  CBP_Object *obj = NULL;
+  CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
+                    return_null);
+  CBP_ObjectDef_Cliche(obj, STRING, sizeof(char) * (strlen(value) + 1), NULL,
+                       NULL, return_null);
   strcpy(obj->data, value);
   return obj;
+return_null:
+  CBP_GracefulDestroy(CBP_DestroyObject, obj);
+  return NULL;
 }
 
 CBP_Object *CBP_GetStringFromRange(const char *start_ptr, u64 length) {
-  CBP_Object *obj = malloc(sizeof(CBP_Object));
-  if (obj == NULL) {
-    return NULL;
-  }
-  obj->type = STRING;
-  obj->element_size = length + 1;
-  obj->data = calloc(1, obj->element_size);
-  obj->destroy_function = NULL;
-  obj->copy_function = NULL;
-  if (obj->data == NULL) {
-    free(obj);
-    return NULL;
-  }
-  // memset(obj->data, 0, obj->element_size);
+  CBP_Object *obj = NULL;
+  CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
+                    return_null);
+  CBP_ObjectDef_Cliche(obj, STRING, sizeof(char) * (length + 1), NULL, NULL,
+                       return_null);
   memcpy(obj->data, start_ptr, length);
-  // ((char *)obj->data)[length] = '\0';
   return obj;
+return_null:
+  CBP_GracefulDestroy(CBP_DestroyObject, obj);
+  return NULL;
 }
 
 CBP_Object *CBP_GetCustom(const void *value, u64 size,
                           const CBP_DestroyFn destroy_function,
                           const CBP_CopyFn copy_function) {
-  CBP_Object *obj = calloc(1, sizeof(CBP_Object));
-  if (obj == NULL) {
-    return NULL;
-  }
-  obj->type = CUSTOM;
-  obj->element_size = size;
-  obj->data = calloc(1, size);
-  if (obj->data == NULL) {
-    free(obj);
-    return NULL;
-  }
-  if (destroy_function == NULL || copy_function == NULL) {
-    free(obj);
-    return NULL;
-  }
-  obj->destroy_function = destroy_function;
-  obj->copy_function = copy_function;
-  // memset(obj->data, 0, size);
+  CBP_Object *obj = NULL;
+  CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
+                    return_null);
+  CBP_ObjectDef_Cliche(obj, CUSTOM, size, destroy_function, copy_function,
+                       return_null);
   if (value != NULL) {
     memcpy(obj->data, value, size);
   }
   return obj;
+return_null:
+  if (obj != NULL) {
+    CBP_GracefulDestroy(free, obj->data);
+    CBP_GracefulDestroy(free, obj);
+  }
+  return NULL;
 }
 
 CBP_Object *CBP_GetConstView(const CBP_Object *src) {
-  CBP_Object *obj = calloc(1, sizeof(CBP_Object));
-  if (obj == NULL) {
-    return NULL;
-  }
-  obj->type = CONSTVIEW;
-  obj->element_size = sizeof(CBP_Object *);
-  obj->destroy_function = NULL;
-  obj->copy_function = NULL;
+  CBP_Object *obj = NULL;
+  CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
+                    return_null);
+  CBP_ObjectDef_Cliche(obj, CONSTVIEW, sizeof(CBP_Object *), NULL, NULL,
+                       return_null);
   obj->data = (void *)src;
   return obj;
+return_null:
+  CBP_GracefulDestroy(free, obj);
+  return NULL;
 }
 
 CBP_Object *CBP_CopyFromObject(const CBP_Object *src) {
@@ -146,21 +130,55 @@ CBP_Object *CBP_CopyFromObject(const CBP_Object *src) {
       obj->destroy_function = src->destroy_function;
       obj->copy_function = src->copy_function;
     } else {
-      // memset(obj->data, 0, src->element_size);
       memcpy(obj->data, src->data, src->element_size);
       obj->copy_function = NULL;
       obj->destroy_function = NULL;
     }
   }
-  // printf("[DEBUG INFO] Done memcpy'ing. Return.\n");
   return obj;
 }
 
-int CBP_EqCstring(const CBP_Object *lhs, const char *rhs) {
-  if (lhs == NULL || lhs->data == NULL || lhs->type != STRING) {
-    return 0;
+/* End CBP Object Creation */
+
+/* CBP Object Equation */
+
+int CBP_Eq(const CBP_Object *lhs, const CBP_Object *rhs) {
+  if (lhs == NULL || rhs == NULL) {
+    return (lhs == rhs);
   }
-  return strcmp((char *)lhs->data, rhs) == 0;
+
+  if (lhs == rhs || lhs->data == rhs->data) {
+    return true;
+  }
+
+  if (lhs->element_size != rhs->element_size) {
+    return false;
+  }
+
+  return memcmp(lhs->data, rhs->data, lhs->element_size) == 0;
+}
+
+CBP_ObjectEqCValues_Meta(int, INT, i64, false);
+CBP_ObjectEqCValues_Meta(uint, UINT, u64, false);
+CBP_ObjectEqCValues_Meta(char, CHAR, char, false);
+CBP_ObjectEqCValues_Meta(string, STRING, const char *,
+                         strcmp((char *)lhs->data, value) == 0);
+
+/* End CBP Object Equation */
+
+/* CBP Object Nullification-related methods */
+
+int CBP_IsNullObj(const CBP_Object *obj) {
+  if (obj == NULL) {
+    return 1;
+  }
+  if (obj->type == NULLOBJ) {
+    return 2;
+  }
+  if (obj->data == NULL) {
+    return 3;
+  }
+  return 0;
 }
 
 int CBP_Nullify(CBP_Object *obj) {
@@ -220,31 +238,4 @@ int CBP_InitNullObj(CBP_Object *obj) {
   return HX_OK;
 }
 
-int CBP_Eq(const CBP_Object *lhs, const CBP_Object *rhs) {
-  if (lhs == NULL || rhs == NULL) {
-    return (lhs == rhs);
-  }
-
-  if (lhs == rhs || lhs->data == rhs->data) {
-    return true;
-  }
-
-  if (lhs->element_size != rhs->element_size) {
-    return false;
-  }
-
-  return memcmp(lhs->data, rhs->data, lhs->element_size) == 0;
-}
-
-int CBP_IsNullObj(const CBP_Object *obj) {
-  if (obj == NULL) {
-    return 1;
-  }
-  if (obj->type == NULLOBJ) {
-    return 2;
-  }
-  if (obj->data == NULL) {
-    return 3;
-  }
-  return 0;
-}
+/* End CBP Object Nullification-related methods */
