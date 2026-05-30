@@ -68,6 +68,14 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
   const CBP_Object *reconciled_account_string = NULL, *target_balance = NULL,
                    *target_currency = NULL;
 
+  CBP_Object *target_account_balance_map = NULL;
+  CBP_Object *scoped_target_account_balance_map = NULL;
+  CBP_Object *reconciled_account_obj_const_view = NULL;
+
+  CBP_Object *delta_obj = NULL;
+
+  CBP_Object *posting_obj = NULL;
+
   CBP_Array_TypeCheckedSafeGetValue(reconciled_account_string, parser, STRING,
                                     "balance_directive::reconciled_account",
                                     &tokens, 0, return_err);
@@ -83,12 +91,15 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
   const CBP_Object *contra_account_obj = CBP_HashMap_RetrieveByKey(
       parser->states.pad_balance_map, reconciled_account_obj);
 
-  if (CBP_IsNullObj(reconciled_account_obj) ||
-      CBP_IsNullObj(contra_account_obj)) {
+  if (CBP_IsNullObj(reconciled_account_obj)) {
+    CBP_Parser_RegisterError(parser, "Reconciled Account is empty");
     goto return_err;
   }
 
   if (cbp_HasNonnullCurrentTxnStates(parser)) {
+    CBP_Parser_RegisterError(
+        parser,
+        "In processing balance directive: has nonnull current txn states!");
     goto return_err;
   }
 
@@ -97,15 +108,12 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
   parser->current_txn_states.payee = CBP_GetString("");
   parser->current_txn_states.remarks = CBP_GetString("Pad-balance");
 
-  CBP_Object *reconciled_account_obj_const_view = CBP_GetConstPtrView(
+  reconciled_account_obj_const_view = CBP_GetConstPtrView(
       reconciled_account_obj->data, sizeof(CBP_BeancountAccount));
 
   CBP_Object *reconciled_account_balance_map =
       CBP_HashMap_RetrieveByKey(parser->beancount_accounts_balance_map,
                                 reconciled_account_obj_const_view);
-
-  CBP_Object *target_account_balance_map = NULL;
-  CBP_Object *scoped_target_account_balance_map = NULL;
 
   if (reconciled_account_balance_map == NULL) {
     scoped_target_account_balance_map = CBP_GetCustom(
@@ -136,16 +144,22 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
 
   double delta = atof(target_balance->data) - current_balance_f64;
 
+  if (fabs(delta - 0.00) < HX_EPSILON) {
+    goto free_and_return_ok;
+  } else {
+    if (CBP_IsNullObj(contra_account_obj)) {
+      goto return_err;
+    }
+  }
+
   snprintf(buffer, BUFFER_SIZE, "%.2lf", delta);
 
-  CBP_Object *delta_obj = NULL;
   CBP_PtrSafeAssign(CBP_Object, delta_obj,
                     CBP_GetInt(delta * pow(10.00, HX_CBP_PRECISION)),
                     return_err);
   CBP_HashMap_Upsert(parser->current_txn_states.balance_map, target_currency,
                      delta_obj);
 
-  CBP_Object *posting_obj = NULL;
   CBP_PtrSafeAssign(CBP_Object, posting_obj,
                     CBP_Models_GetBeancountPosting(reconciled_account_obj->data,
                                                    buffer,
@@ -157,6 +171,7 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
       (CBP_Object *)contra_account_obj;
 
   cbp_SyncTransaction(parser);
+free_and_return_ok:
   CBP_GracefulDestroy(CBP_DestroyObject, delta_obj);
   CBP_GracefulDestroy(CBP_DestroyObject, posting_obj);
 
@@ -165,6 +180,11 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
 
   return HX_OK;
 return_err:
+  CBP_GracefulDestroy(CBP_DestroyObject, delta_obj);
+  CBP_GracefulDestroy(CBP_DestroyObject, posting_obj);
+
+  CBP_GracefulDestroy(CBP_DestroyObject, reconciled_account_obj_const_view);
+  cbp_DestroyCurrentTxnStates(parser);
   return HX_ERR;
 }
 
@@ -172,9 +192,9 @@ int cbp_ProcessTransactionDefLine(CBP_Parser *parser, CBP_Array tokens) {
   if (parser == NULL || tokens.contents == NULL) {
     goto return_err;
   }
-  if (tokens.size < 1 || tokens.size > 2) {
+  if (tokens.size < 1) {
     CBP_Parser_RegisterUnmatchedArgumentSizeError(
-        parser, "transaction definition line", "1 or 2", tokens.size);
+        parser, "transaction definition line", ">1", tokens.size);
     goto return_err;
   }
   for (u64 i = 0; i < tokens.size; i++) {

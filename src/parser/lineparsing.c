@@ -144,12 +144,8 @@ int cbp_MaintainBalance(CBP_Parser *parser) {
 
     CBP_Object *current_currency = NULL;
 
-    char *currency_to_update = posting_data->quoted_currency
-                                   ? posting_data->quoted_currency
-                                   : posting_data->currency;
-
     CBP_PtrSafeAssign(CBP_Object, current_currency,
-                      CBP_GetString(currency_to_update), return_err);
+                      CBP_GetString(posting_data->currency), return_err);
 
     CBP_Object *existing_balance =
         CBP_HashMap_RetrieveByKey(account_balance_hashmap, current_currency);
@@ -158,8 +154,7 @@ int cbp_MaintainBalance(CBP_Parser *parser) {
 
     CBP_PtrSafeAssign(CBP_Object, balance_to_update, CBP_GetInt(0), return_err);
 
-    i64 delta = posting_data->quoted_currency ? posting_data->quoted_amount
-                                              : posting_data->amount;
+    i64 delta = posting_data->amount;
 
     if (CBP_IsNullObj(existing_balance)) {
       *(i64 *)balance_to_update->data = delta;
@@ -353,9 +348,8 @@ return_err:
 
 CBP_Object *cbp_ParseIndentedQuoted(CBP_Parser *parser, CBP_Array *tokens,
                                     CBP_Object *posting_amount,
-                                    i64 *value_to_push,
-                                    // CBP_Object *posting_object_to_push,
-                                    CBP_Object *account, CBP_Object *currency,
+                                    i64 *value_to_push, CBP_Object *account,
+                                    CBP_Object *currency,
                                     CBP_Object *currency_to_push) {
   CBP_Object *posting_object_to_push = NULL;
   CBP_Object *at = NULL;
@@ -395,7 +389,13 @@ CBP_Object *cbp_ParseIndentedQuoted(CBP_Parser *parser, CBP_Array *tokens,
                                             "@ | @@", at->data);
     goto return_err;
   }
-  currency_to_push = target_currency;
+  // currency_to_push = target_currency;
+  currency_to_push->compare_function = target_currency->compare_function;
+  currency_to_push->copy_function = target_currency->copy_function;
+  currency_to_push->destroy_function = target_currency->destroy_function;
+  currency_to_push->data = target_currency->data;
+  currency_to_push->element_size = target_currency->element_size;
+  currency_to_push->type = target_currency->type;
   return posting_object_to_push;
 return_err:
   return NULL;
@@ -473,15 +473,19 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
                                     "posting::currency", tokens, 2, return_err);
   value_to_push =
       (i64)(atof(posting_amount->data) * pow(10.00, HX_CBP_PRECISION));
-  currency_to_push = currency;
+  // currency_to_push = currency;
   if (tokens->size == 3) {
     posting_object_to_push = CBP_Models_GetBeancountPosting(
         (const CBP_BeancountAccount *)(account->data),
         (const char *)posting_amount->data, (const char *)currency->data);
+        currency_to_push = currency;
   } else if (tokens->size == 6) {
+    currency_to_push = malloc(sizeof(CBP_Object));
+    CBP_InitNullObj(currency_to_push);
     if ((posting_object_to_push = cbp_ParseIndentedQuoted(
              parser, tokens, posting_amount, &value_to_push, account, currency,
              currency_to_push)) == NULL) {
+
       goto return_err;
     }
   }
@@ -497,9 +501,14 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
 
   CBP_PtrSafeAssign(CBP_Object, target_value_obj, CBP_GetInt(value_to_push),
                     return_err);
-  CBP_Array_Push(parser->current_txn_states.postings, posting_object_to_push);
-  CBP_HashMap_Upsert(parser->current_txn_states.balance_map, currency_to_push,
-                     target_value_obj);
+  if (CBP_Array_Push(parser->current_txn_states.postings,
+                     posting_object_to_push) != HX_OK) {
+    goto return_err;
+  }
+  if (CBP_HashMap_Upsert(parser->current_txn_states.balance_map,
+                         currency_to_push, target_value_obj) != HX_OK) {
+    goto return_err;
+  }
   CBP_GracefulDestroy(CBP_DestroyObject, target_value_obj);
   CBP_GracefulDestroy(CBP_DestroyObject, posting_object_to_push);
   return HX_OK;
@@ -508,8 +517,12 @@ return_err:
 }
 
 int CBP_Parser_ParseUnindentedLine(CBP_Parser *parser, CBP_Array *tokens) {
-  if (tokens == NULL || tokens->contents == NULL || tokens->size == 0) {
+  if (tokens == NULL || tokens->contents == NULL) {
     return HX_ERR;
+  }
+
+  if (tokens->size == 0) {
+    return HX_OK; // size in 0 is acceptable, we just ignore it.
   }
 
   // determine directive type
@@ -605,13 +618,18 @@ int CBP_Parser_Feed(CBP_Parser *parser, const char *line) {
     return HX_ERR;
   }
   if (line[0] == ' ' || line[0] == '\t') {
-    // unimplemented
-    CBP_Parser_ParseIndentedLine(parser, tokens);
+    if (CBP_Parser_ParseIndentedLine(parser, tokens) != HX_OK) {
+      return HX_ERR;
+    }
   } else {
     if (parser->states.is_in_transaction) {
-      cbp_SyncTransaction(parser);
+      if (cbp_SyncTransaction(parser) != HX_OK) {
+        return HX_ERR;
+      }
     }
-    CBP_Parser_ParseUnindentedLine(parser, tokens);
+    if (CBP_Parser_ParseUnindentedLine(parser, tokens) != HX_OK) {
+      return HX_ERR;
+    }
   }
   CBP_Array_Destroy(tokens);
   return HX_OK;
@@ -661,6 +679,7 @@ int CBP_Parser_Parse(CBP_Parser *parser, const char *file) {
 
   char buffer[BUFFER_SIZE + 1];
   while (fgets(buffer, BUFFER_SIZE, fd) != NULL) {
+    parser->states.line++;
     i64 j = strlen(buffer) - 1;
     if (j <= 0) {
       continue;
@@ -669,7 +688,6 @@ int CBP_Parser_Parse(CBP_Parser *parser, const char *file) {
       buffer[j] = '\0';
       j--;
     }
-    parser->states.line++;
     if (CBP_Parser_Feed(parser, buffer) != HX_OK) {
       goto return_err;
     }
@@ -723,6 +741,11 @@ return_err:
             (char *)parser->states.nearest_error->data);
   } else {
     fprintf(stderr, "Panicked: Unknown error!\n");
+    fprintf(stderr,
+            "These are the details that may be of some help: \n"
+            "current_file = %s\n"
+            "current_line = %llu\n",
+            parser->states.current_working_file_name, parser->states.line);
   }
   if (parser != NULL) {
     CBP_Parser_Destroy(parser);
