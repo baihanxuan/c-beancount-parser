@@ -14,6 +14,8 @@ typedef struct {
   int is_ref;
 } CBP_Array;
 
+typedef void (*CBP_Array_CallbackFn)(const CBP_Object *);
+
 // Get an empty CBP_Array.
 CBP_Array *CBP_GetArray();
 
@@ -33,6 +35,8 @@ int CBP_Array_Destroy(CBP_Array *array);
 CBP_Object *CBP_Array_GetValue(CBP_Array *array, unsigned long long index);
 
 CBP_Array *CBP_CopyFromArray(const CBP_Array *src);
+
+void CBP_Array_ForEach(CBP_Array *array, CBP_Array_CallbackFn callback_function);
 
 #define CBP_Array_TypeCheckedSafeGetValue(                                     \
     target, parser, expected_type, field_name, array, index, error_goto)       \

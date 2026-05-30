@@ -13,6 +13,7 @@ typedef struct {
   CBP_Object *title;
   CBP_Array *beancount_accounts;
   CBP_HashMap *beancount_account_map;
+  CBP_HashMap *beancount_accounts_balance_map; // HashMap<const CBP_BeancountAccount*, HashMap<string, int64>>
   CBP_Array *beancount_journal_entries;
   struct {
     CBP_Array *files_to_include;
@@ -28,7 +29,6 @@ typedef struct {
     CBP_Object *remarks;
     CBP_Array *postings;
     CBP_HashMap *balance_map;
-    // CBP_Array *currencies_involved;
     CBP_Object *catch_all_account;
   } current_txn_states;
 } CBP_Parser;

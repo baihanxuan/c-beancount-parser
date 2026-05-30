@@ -61,7 +61,7 @@ CBP_Object *CBP_Models_GetBeancountPosting(const CBP_BeancountAccount *account,
   CBP_PtrSafeAssign(CBP_Object, posting,
                     CBP_GetCustom(NULL, sizeof(CBP_BeancountPosting),
                                   CBP_Models_DestroyBeancountPosting,
-                                  CBP_Models_CopyBeancountPosting),
+                                  CBP_Models_CopyBeancountPosting, NULL),
                     return_null);
   CBP_BeancountPosting *posting_data = posting->data;
   posting_data->account = account;
@@ -161,7 +161,7 @@ CBP_Object *CBP_Models_GetBeancountAccount(const char *name,
   CBP_PtrSafeAssign(CBP_Object, account,
                     CBP_GetCustom(NULL, sizeof(CBP_BeancountAccount),
                                   CBP_Models_DestroyBeancountAccount,
-                                  CBP_Models_CopyBeancountAccount),
+                                  CBP_Models_CopyBeancountAccount, NULL),
                     return_null);
 
   CBP_BeancountAccount *account_data = account->data;

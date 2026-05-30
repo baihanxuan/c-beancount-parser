@@ -27,6 +27,29 @@ return_err:
   return HX_ERR;
 }
 
+int CBP_Date_Compare(const CBP_Object *this_one, const CBP_Object *that_one) {
+  const CBP_Date *this_date = this_one->data, *that_date = that_one->data;
+  if (this_date->year < that_date->year) {
+    return -1;
+  }
+  if (this_date->year == that_date->year) {
+    if (this_date->month < that_date->month) {
+      return -1;
+    }
+    if (this_date->month == that_date->month) {
+      if (this_date->day < that_date->day) {
+        return -1;
+      }
+      if (this_date->day == that_date->day) {
+        return 0;
+      }
+      return 1;
+    }
+    return 1;
+  }
+  return 1;
+}
+
 CBP_Object *CBP_GetDate(const CBP_Object *value) {
   if (CBP_IsNullObj(value)) {
     goto return_null;
@@ -35,10 +58,10 @@ CBP_Object *CBP_GetDate(const CBP_Object *value) {
     goto return_null;
   }
   CBP_Object *obj = NULL;
-  CBP_PtrSafeAssign(
-      CBP_Object, obj,
-      CBP_GetCustom(NULL, sizeof(CBP_Date), CBP_Date_Destroy, CBP_Date_Copy),
-      return_null);
+  CBP_PtrSafeAssign(CBP_Object, obj,
+                    CBP_GetCustom(NULL, sizeof(CBP_Date), CBP_Date_Destroy,
+                                  CBP_Date_Copy, CBP_Date_Compare),
+                    return_null);
 
   CBP_Date *date = obj->data;
 

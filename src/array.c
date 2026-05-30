@@ -113,23 +113,6 @@ int CBP_Array_Push(CBP_Array *array, const CBP_Object *element) {
     return HX_ERR;
   }
 
-  // array->contents[array->size].data = new_data;
-
-  // if (element->type == CUSTOM && element->copy_function != NULL &&
-  //     element->destroy_function != NULL) {
-  //   CBP_CopyFn copy_fn = element->copy_function;
-  //   CBP_DestroyFn destroy_fn = element->destroy_function;
-  //   if (copy_fn(array->contents[array->size].data, element->data) != HX_OK) {
-  //     // This should free everything that's partially allocated.
-  //     destroy_fn(array->contents[array->size].data);
-  //     CBP_InitNullObj(&array->contents[array->size]);
-  //     return HX_ERR;
-  //   }
-  // } else {
-  //   memcpy(array->contents[array->size].data, element->data,
-  //          element->element_size);
-  // }
-
   if (element->type == CUSTOM && element->copy_function != NULL &&
       element->destroy_function != NULL) {
     CBP_CopyFn copy_fn = element->copy_function;
@@ -186,4 +169,13 @@ CBP_Object *CBP_Array_GetValue(CBP_Array *array, u64 index) {
     return NULL;
   }
   return &(array->contents[index]);
+}
+
+// I have really, really immersed in my own art.
+
+void CBP_Array_ForEach(CBP_Array *array,
+                       CBP_Array_CallbackFn callback_function) {
+  for (u64 i = 0; i < array->size; i++) {
+    callback_function(CBP_Array_GetValue(array, i));
+  }
 }

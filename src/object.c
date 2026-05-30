@@ -26,6 +26,7 @@
     obj->data = calloc(1, sizeof(CType));                                      \
     obj->destroy_function = NULL;                                              \
     obj->copy_function = NULL;                                                 \
+    obj->compare_function = cbp_CompareIntrinsicObjects;                       \
     if (obj->data == NULL) {                                                   \
       free(obj);                                                               \
       return NULL;                                                             \
@@ -36,14 +37,21 @@
   }
 
 #define CBP_ObjectDef_Cliche(target, CBPObjEnum, CBPElemSize, CBPDestroyFn,    \
-                             CBPCopyFn, ErrorGoto)                             \
+                             CBPCopyFn, CBPCompFn, ErrorGoto)                  \
   {                                                                            \
     target->type = CBPObjEnum;                                                 \
     target->element_size = CBPElemSize;                                        \
     CBP_PtrSafeAssign(void, target->data, calloc(1, CBPElemSize), ErrorGoto);  \
     target->destroy_function = CBPDestroyFn;                                   \
     target->copy_function = CBPCopyFn;                                         \
+    target->compare_function = CBPCompFn;                                      \
   }
+
+/* Compare Functions Predef */
+int cbp_CompareIntrinsicObjects(const CBP_Object *, const CBP_Object *);
+int cbp_CompareConstViewObjects(const CBP_Object *, const CBP_Object *);
+int cbp_CompareCString(const CBP_Object *, const CBP_Object *);
+/* End Compare Functions Predef */
 
 /* CBP Object Creation */
 CBP_ObjectDef_Meta(Int, INT, i64);
@@ -55,7 +63,7 @@ CBP_Object *CBP_GetString(const char *value) {
   CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
                     return_null);
   CBP_ObjectDef_Cliche(obj, STRING, sizeof(char) * (strlen(value) + 1), NULL,
-                       NULL, return_null);
+                       NULL, cbp_CompareCString, return_null);
   strcpy(obj->data, value);
   return obj;
 return_null:
@@ -68,7 +76,7 @@ CBP_Object *CBP_GetStringFromRange(const char *start_ptr, u64 length) {
   CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
                     return_null);
   CBP_ObjectDef_Cliche(obj, STRING, sizeof(char) * (length + 1), NULL, NULL,
-                       return_null);
+                       cbp_CompareCString, return_null);
   memcpy(obj->data, start_ptr, length);
   return obj;
 return_null:
@@ -78,12 +86,13 @@ return_null:
 
 CBP_Object *CBP_GetCustom(const void *value, u64 size,
                           const CBP_DestroyFn destroy_function,
-                          const CBP_CopyFn copy_function) {
+                          const CBP_CopyFn copy_function,
+                          const CBP_CompareFn compare_function) {
   CBP_Object *obj = NULL;
   CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
                     return_null);
   CBP_ObjectDef_Cliche(obj, CUSTOM, size, destroy_function, copy_function,
-                       return_null);
+                       compare_function, return_null);
   if (value != NULL) {
     memcpy(obj->data, value, size);
   }
@@ -101,7 +110,7 @@ CBP_Object *CBP_GetConstView(const CBP_Object *src) {
   CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
                     return_null);
   CBP_ObjectDef_Cliche(obj, CONSTVIEW, sizeof(CBP_Object *), NULL, NULL,
-                       return_null);
+                       cbp_CompareConstViewObjects, return_null);
   obj->data = (void *)src;
   return obj;
 return_null:
@@ -109,7 +118,23 @@ return_null:
   return NULL;
 }
 
+CBP_Object *CBP_GetConstPtrView(void *ptr, u64 size) {
+  CBP_Object *obj = NULL;
+  CBP_PtrSafeAssign(CBP_Object, obj, calloc(1, sizeof(CBP_Object)),
+                    return_null);
+  CBP_ObjectDef_Cliche(obj, CONSTVIEW, size, NULL, NULL,
+                       cbp_CompareConstViewObjects, return_null);
+  obj->data = ptr;
+  return obj;
+return_null:
+  CBP_GracefulDestroy(free, obj);
+  return NULL;
+}
+
 CBP_Object *CBP_CopyFromObject(const CBP_Object *src) {
+  if (src == NULL) {
+    return NULL;
+  }
   CBP_Object *obj = calloc(1, sizeof(CBP_Object));
   if (obj == NULL) {
     return NULL;
@@ -118,6 +143,11 @@ CBP_Object *CBP_CopyFromObject(const CBP_Object *src) {
   obj->element_size = src->element_size;
   if (src->type == CONSTVIEW) {
     obj->data = src->data;
+  } else if (src->type == NULLOBJ) {
+    obj->data = NULL;
+    obj->copy_function = NULL;
+    obj->destroy_function = NULL;
+
   } else {
     obj->data = calloc(1, src->element_size);
     if (obj->data == NULL) {
@@ -153,6 +183,11 @@ int CBP_Eq(const CBP_Object *lhs, const CBP_Object *rhs) {
 
   if (lhs->element_size != rhs->element_size) {
     return false;
+  }
+
+  if (lhs->compare_function == rhs->compare_function &&
+      lhs->compare_function != NULL) {
+    return lhs->compare_function(lhs->data, rhs->data) == 0;
   }
 
   return memcmp(lhs->data, rhs->data, lhs->element_size) == 0;
@@ -239,3 +274,28 @@ int CBP_InitNullObj(CBP_Object *obj) {
 }
 
 /* End CBP Object Nullification-related methods */
+
+/* CBP Object Comparisons */
+int cbp_CompareIntrinsicObjects(const CBP_Object *this_one,
+                                const CBP_Object *that_one) {
+  switch (this_one->type) {
+  case INT:
+    return *(i64 *)this_one->data - *(i64 *)that_one->data;
+  case UINT:
+    return *(u64 *)this_one->data - *(u64 *)that_one->data;
+  case CHAR:
+    return *(char *)this_one->data - *(char *)that_one->data;
+  default:
+    return 1;
+  }
+}
+
+int cbp_CompareCString(const CBP_Object *this_one, const CBP_Object *that_one) {
+  return strcmp(this_one->data, that_one->data);
+}
+
+int cbp_CompareConstViewObjects(const CBP_Object *this_one,
+                                const CBP_Object *that_one) {
+  return this_one->data == that_one->data;
+}
+/* End CBP Object Comparisons */

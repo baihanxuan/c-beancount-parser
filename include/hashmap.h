@@ -19,12 +19,18 @@ typedef struct {
   CBP_Array *keys;
 } CBP_HashMap;
 
+int CBP_HashMap_Initialize(CBP_HashMap *hash_map);
+
 CBP_HashMap *CBP_GetHashMap();
 
 int CBP_HashMap_Upsert(CBP_HashMap *hash_map, const CBP_Object *key,
                        const CBP_Object *value);
 
 int CBP_HashMap_Destroy(CBP_HashMap *hash_map);
+
+int CBP_HashMap_ObjectCompatibleDestroy(void *data);
+
+int CBP_HashMap_ObjectCompatibleCopy(void *dst, const void *src);
 
 CBP_Object *CBP_HashMap_RetrieveByKey(CBP_HashMap *hash_map,
                                       const CBP_Object *key);

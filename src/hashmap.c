@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+// #include <string.h>
 
 #define HASHMAP_PRIME 31
 #define POOL_SIZE 256
@@ -39,24 +40,32 @@ return_err:
   return HX_ERR;
 }
 
-CBP_HashMap *CBP_GetHashMap() {
-  CBP_HashMap *hashMap = calloc(1, sizeof(CBP_HashMap));
-  if (hashMap == NULL) {
-    return NULL;
+int CBP_HashMap_Initialize(CBP_HashMap *hash_map) {
+  hash_map->pool = calloc(POOL_SIZE, sizeof(CBP_HashCell));
+  if (hash_map->pool == NULL) {
+    free(hash_map);
+    return HX_ERR;
   }
-  hashMap->pool = calloc(POOL_SIZE, sizeof(CBP_HashCell));
-  if (hashMap->pool == NULL) {
-    free(hashMap);
-    return NULL;
-  }
-  hashMap->keys = CBP_GetArray();
-  if (hashMap->keys == NULL) {
-    if (hashMap->pool != NULL) {
-      free(hashMap->pool);
+  hash_map->keys = CBP_GetArray();
+  if (hash_map->keys == NULL) {
+    if (hash_map->pool != NULL) {
+      free(hash_map->pool);
     }
+    free(hash_map);
+    return HX_ERR;
+  }
+  return HX_OK;
+}
+
+CBP_HashMap *CBP_GetHashMap() {
+  CBP_HashMap *hash_map = calloc(1, sizeof(CBP_HashMap));
+  if (hash_map == NULL) {
     return NULL;
   }
-  return hashMap;
+  if (CBP_HashMap_Initialize(hash_map) != HX_OK) {
+    return NULL;
+  }
+  return hash_map;
 }
 
 int CBP_HashMap_Upsert(CBP_HashMap *hash_map, const CBP_Object *key,
@@ -168,4 +177,34 @@ int CBP_HashMap_Destroy(CBP_HashMap *hash_map) {
   CBP_GracefulDestroy(CBP_Array_Destroy, hash_map->keys);
   free(hash_map);
   return HX_OK;
+}
+
+int CBP_HashMap_ObjectCompatibleCopy(void *dst, const void *src) {
+  if (dst == NULL || src == NULL) {
+    return HX_ERR;
+  }
+  const CBP_HashMap *origin = src;
+  CBP_HashMap *dst_map = dst;
+  CBP_HashMap_Initialize(dst_map);
+  for (int i = 0; i < POOL_SIZE; i++) {
+    CBP_HashCell *cell = origin->pool + i;
+    CBP_HashCell *dst_cell = dst_map->pool + i;
+    while (cell != NULL && dst_cell != NULL) {
+      dst_cell->key = CBP_CopyFromObject(cell->key);
+      dst_cell->value = CBP_CopyFromObject(cell->value);
+      if (cell->next != NULL) {
+        dst_cell->next = cbp_HashMap_GetHashCell();
+      } else {
+        dst_cell->next = NULL;
+      }
+      dst_cell = dst_cell->next;
+      cell = cell->next;
+    }
+  }
+  dst_map->keys = CBP_CopyFromArray(origin->keys);
+  return HX_OK;
+}
+
+int CBP_HashMap_ObjectCompatibleDestroy(void *data) {
+  return CBP_HashMap_Destroy((CBP_HashMap *)data);
 }

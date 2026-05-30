@@ -11,16 +11,20 @@ typedef struct CBP_Object {
   enum CBP_ObjectType type;
   void *data;
   unsigned long long element_size;
-  int (*destroy_function)(
-      void *data); // stores a reference to an external, unified
+  // stores a reference to an external, unified
   // destroy function of the custom object
-  int (*copy_function)(
-      void *dst, const void *src); // stores a reference to an external, unified
-                                   // copy function of the custom object
+  int (*destroy_function)(void *data);
+  // stores a reference to an external, unified
+  // copy function of the custom object
+  int (*copy_function)(void *dst, const void *src);
+  // stores a reference to an external, unified compare function of the custom
+  // object
+  int (*compare_function)(const struct CBP_Object *this_data, const struct CBP_Object *that_data);
 } CBP_Object;
 
 typedef int (*CBP_DestroyFn)(void *);
 typedef int (*CBP_CopyFn)(void *, const void *);
+typedef int (*CBP_CompareFn)(const CBP_Object *, const CBP_Object *);
 
 // Get an int64 object
 CBP_Object *CBP_GetInt(long long value);
@@ -41,13 +45,16 @@ CBP_Object *CBP_GetStringFromRange(const char *start_ptr,
 // Get a custom object
 CBP_Object *CBP_GetCustom(const void *value, unsigned long long size,
                           const CBP_DestroyFn destroy_function,
-                          const CBP_CopyFn copy_function);
+                          const CBP_CopyFn copy_function,
+                          const CBP_CompareFn compare_function);
 
 // Copy from an existing object
 CBP_Object *CBP_CopyFromObject(const CBP_Object *src);
 
 // Get a const view (= pointer) to an existing object
 CBP_Object *CBP_GetConstView(const CBP_Object *src);
+
+CBP_Object *CBP_GetConstPtrView(void *ptr, unsigned long long size);
 
 // Destroy an object.
 // frees its data and itself.

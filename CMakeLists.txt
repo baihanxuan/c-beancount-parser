@@ -10,7 +10,7 @@ find_package(Threads REQUIRED)
 
 include_directories(./include)
 
-add_library(cbp_lib SHARED
+add_library(libcbcparser SHARED
     src/array.c
     src/object.c
     src/parser.c
@@ -21,7 +21,7 @@ add_library(cbp_lib SHARED
     src/date.c
     src/models.c
 )
-target_link_libraries(cbp_lib PRIVATE Threads::Threads)
+target_link_libraries(libcbcparser PRIVATE Threads::Threads)
 
 # C-beancount-parser is intended to be a shared library.
 

@@ -208,8 +208,6 @@ void cbp_DestroyCurrentTxnStates(CBP_Parser *parser) {
                       parser->current_txn_states.balance_map);
   CBP_GracefulDestroy(CBP_Array_Destroy, parser->current_txn_states.postings);
   parser->current_txn_states.catch_all_account = NULL;
-  // CBP_GracefulDestroy(CBP_Array_Destroy,
-  //                     parser->current_txn_states.currencies_involved);
 }
 
 int cbp_HasNonnullCurrentTxnStates(CBP_Parser *parser) {
@@ -229,36 +227,28 @@ int cbp_SyncTransaction(CBP_Parser *parser) {
 
   // Checks whether the transaction balances to zero.
   for (u64 i = 0; i < parser->current_txn_states.balance_map->keys->size; i++) {
-    CBP_Object *current_currency =
-        CBP_Array_GetValue(parser->current_txn_states.balance_map->keys, i);
-    if (CBP_IsNullObj(current_currency)) {
-      CBP_Parser_RegisterInvalidTypeError(parser, "currency", STRING, NULLOBJ);
-      goto return_err;
-    }
-    if (current_currency->type != STRING) {
-      CBP_Parser_RegisterInvalidTypeError(parser, "currency", STRING,
-                                          current_currency->type);
-      goto return_err;
-    }
+    CBP_Object *current_currency = NULL;
+
+    CBP_Array_TypeCheckedSafeGetValue(
+        current_currency, parser, STRING, "currency",
+        parser->current_txn_states.balance_map->keys, i, return_err);
+
     CBP_Object *balance = CBP_HashMap_RetrieveByKey(
         parser->current_txn_states.balance_map, current_currency);
     if (balance == NULL) {
-      char buffer[BUFFER_SIZE + 1];
-      snprintf(buffer, BUFFER_SIZE,
-               "Got null object for the balance for currency: %s",
-               (char *)current_currency->data);
-      CBP_Parser_RegisterError(parser, buffer);
+      CBP_Parser_RegisterError(
+          parser, "Got a null object as the balance for currency %s",
+          (char *)current_currency->data);
       goto return_err;
     }
 
     if (parser->current_txn_states.catch_all_account == NULL) {
       if (!CBP_EqCint(balance, 0)) {
-        char buffer[BUFFER_SIZE + 1];
-        snprintf(buffer, BUFFER_SIZE,
-                 "Postings in a transaction do not balance to zero: %.2lf %s",
-                 CBP_Arith_RawRepresentationToDouble(*(i64 *)balance->data),
-                 (char *)current_currency->data);
-        CBP_Parser_RegisterError(parser, buffer);
+        CBP_Parser_RegisterError(
+            parser,
+            "Postings in a transaction do not balance to zero: %.2lf %s",
+            CBP_Arith_RawRepresentationToDouble(*(i64 *)balance->data),
+            (char *)current_currency->data);
         goto return_err;
       }
     } else {
@@ -279,11 +269,81 @@ int cbp_SyncTransaction(CBP_Parser *parser) {
     }
   }
 
+  for (u64 i = 0; i < parser->current_txn_states.postings->size; i++) {
+    CBP_Object *posting_object = NULL;
+    CBP_Array_TypeCheckedSafeGetValue(
+        posting_object, parser, CUSTOM, "posting_object",
+        parser->current_txn_states.postings, i, return_err);
+    CBP_BeancountPosting *posting_data = posting_object->data;
+    CBP_Object *account_view = NULL;
+    CBP_PtrSafeAssign(CBP_Object, account_view,
+                      CBP_GetConstPtrView((void *)posting_data->account,
+                                          sizeof(CBP_BeancountAccount));
+                      , return_err);
+
+    CBP_Object *account_balance_map = CBP_HashMap_RetrieveByKey(
+        parser->beancount_accounts_balance_map, account_view);
+
+    CBP_Object *target_account_balance_map = NULL;
+    CBP_Object *scoped_target_account_balance_map = NULL;
+
+    if (account_balance_map == NULL) {
+      scoped_target_account_balance_map = CBP_GetCustom(
+          NULL, sizeof(CBP_HashMap), CBP_HashMap_ObjectCompatibleDestroy,
+          CBP_HashMap_ObjectCompatibleCopy, NULL);
+      CBP_HashMap_Initialize(scoped_target_account_balance_map->data);
+      target_account_balance_map = scoped_target_account_balance_map;
+    } else {
+      target_account_balance_map = CBP_CopyFromObject(account_balance_map);
+    }
+
+    CBP_HashMap *account_balance_hashmap = target_account_balance_map->data;
+
+    CBP_Object *current_currency = NULL;
+
+    char *currency_to_update = posting_data->quoted_currency
+                                   ? posting_data->quoted_currency
+                                   : posting_data->currency;
+
+    CBP_PtrSafeAssign(CBP_Object, current_currency,
+                      CBP_GetString(currency_to_update), return_err);
+
+    CBP_Object *existing_balance =
+        CBP_HashMap_RetrieveByKey(account_balance_hashmap, current_currency);
+
+    CBP_Object *balance_to_update = NULL;
+
+    CBP_PtrSafeAssign(CBP_Object, balance_to_update, CBP_GetInt(0), return_err);
+
+    i64 delta = posting_data->quoted_currency ? posting_data->quoted_amount
+                                              : posting_data->amount;
+
+    if (CBP_IsNullObj(existing_balance)) {
+      *(i64 *)balance_to_update->data = delta;
+    } else {
+      *(i64 *)balance_to_update->data = *(i64 *)existing_balance->data + delta;
+    }
+
+    CBP_HashMap_Upsert(account_balance_hashmap, current_currency,
+                       balance_to_update);
+
+    CBP_HashMap_Upsert(parser->beancount_accounts_balance_map, account_view,
+                       target_account_balance_map);
+
+    CBP_GracefulDestroy(CBP_DestroyObject, balance_to_update);
+
+    CBP_GracefulDestroy(CBP_DestroyObject, current_currency);
+
+    CBP_GracefulDestroy(CBP_DestroyObject, account_view);
+
+    CBP_GracefulDestroy(CBP_DestroyObject, target_account_balance_map);
+  }
+
   CBP_Object *journal_entry_object = NULL;
   CBP_PtrSafeAssign(CBP_Object, journal_entry_object,
                     CBP_GetCustom(NULL, sizeof(CBP_BeancountJournalEntry),
                                   CBP_Models_DestroyBeancountJournalEntry,
-                                  CBP_Models_CopyBeancountJournalEntry),
+                                  CBP_Models_CopyBeancountJournalEntry, NULL),
                     return_err);
 
   CBP_BeancountJournalEntry *entry = journal_entry_object->data;
@@ -352,9 +412,6 @@ int cbp_ProcessTransactionDefLine(CBP_Parser *parser, CBP_Array tokens) {
                     CBP_GetHashMap(), return_err);
   CBP_PtrSafeAssign(CBP_Array, parser->current_txn_states.postings,
                     CBP_GetArray(), return_err);
-  // CBP_PtrSafeAssign(CBP_Array,
-  // parser->current_txn_states.currencies_involved,
-  //                   CBP_GetArray(), return_err);
 
   parser->states.is_in_transaction = true;
   return HX_OK;
@@ -498,6 +555,7 @@ CBP_Parser *CBP_GetParser(const char *working_dir,
   parser->title = NULL;
   parser->beancount_accounts = CBP_GetArray();
   parser->beancount_account_map = CBP_GetHashMap();
+  parser->beancount_accounts_balance_map = CBP_GetHashMap();
   parser->beancount_journal_entries = CBP_GetArray();
   parser->operating_currencies = CBP_GetArray();
   cbp_Parser_InitParserStates(parser, working_dir, working_file_name);
@@ -511,6 +569,8 @@ CBP_Parser *CBP_GetSubParser(const char *working_dir,
   parser->title = main_parser->title;
   parser->beancount_accounts = main_parser->beancount_accounts;
   parser->beancount_account_map = main_parser->beancount_account_map;
+  parser->beancount_accounts_balance_map =
+      main_parser->beancount_accounts_balance_map;
   parser->beancount_journal_entries = main_parser->beancount_journal_entries;
   parser->operating_currencies = main_parser->operating_currencies;
 
@@ -543,12 +603,12 @@ int CBP_Parser_Destroy(CBP_Parser *parser) {
     return HX_OK;
   }
   CBP_GracefulDestroy(CBP_DestroyObject, parser->title);
-  // printf("[DEBUG] Destroying beancount_account_map...\n");
+  CBP_GracefulDestroy(CBP_HashMap_Destroy,
+                      parser->beancount_accounts_balance_map);
   CBP_GracefulDestroy(CBP_HashMap_Destroy, parser->beancount_account_map);
   CBP_GracefulDestroy(CBP_Array_Destroy, parser->beancount_accounts);
   CBP_GracefulDestroy(CBP_Array_Destroy, parser->beancount_journal_entries);
   CBP_GracefulDestroy(CBP_Array_Destroy, parser->operating_currencies);
-  // printf("[DEBUG] Destroying state...\n");
   CBP_Parser_DestroyState(parser);
 
   free(parser);
@@ -580,10 +640,7 @@ int CBP_Parser_ParseUnindentedLine(CBP_Parser *parser, CBP_Array *tokens) {
     }
     if (cbp_IsValidDate((const char *)obj->data)) {
       if (cbp_ProcessNormalDirective(parser, tokens) != HX_OK) {
-        // for debugging only. to be changed in production build.
-        // perror("Transaction definition parsing error");
-        // CBP_Parser_RegisterError(parser,
-        //                          "Transaction definition parsing error!");
+        // cbp_ProcessNormalDirective has already registered a detailed error.
         goto return_err;
       }
       return HX_OK;
@@ -692,17 +749,18 @@ int CBP_Parser_ParseIndentedLine(CBP_Parser *parser, CBP_Array *tokens) {
     if (CBP_EqCstring(at, "@")) {
       double per_unit_fx_rate = atof(target_amount->data);
       double posting_amount_double = atof(posting_amount->data);
-      value_to_push = (i64)(per_unit_fx_rate * pow(10, HX_CBP_PRECISION) *
+      value_to_push = (i64)(per_unit_fx_rate * pow(10.00, HX_CBP_PRECISION) *
                             posting_amount_double);
       char at_buffer[BUFFER_SIZE + 1];
-      snprintf(at_buffer, BUFFER_SIZE, "%lld", value_to_push);
+      snprintf(at_buffer, BUFFER_SIZE, "%.2lf",
+               (double)value_to_push / pow(10.00, HX_CBP_PRECISION));
       posting_object_to_push = CBP_Models_GetQuotedBeancountPosting(
           (const CBP_BeancountAccount *)account->data,
           (const char *)posting_amount->data, (const char *)currency->data,
           at_buffer, (const char *)target_currency->data);
     } else if (CBP_EqCstring(at, "@@")) {
       value_to_push =
-          (i64)(atof(target_amount->data) * pow(10, HX_CBP_PRECISION));
+          (i64)(atof(target_amount->data) * pow(10.00, HX_CBP_PRECISION));
       posting_object_to_push = CBP_Models_GetQuotedBeancountPosting(
           (const CBP_BeancountAccount *)(account->data),
           (const char *)posting_amount->data, (const char *)currency->data,
