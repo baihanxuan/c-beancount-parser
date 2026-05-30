@@ -54,6 +54,27 @@ return_err:
   return HX_ERR;
 }
 
+int CBP_Models_InitBeancountPosting(CBP_BeancountPosting *data,
+                                    const CBP_BeancountAccount *account,
+                                    const char *posting_amount_string,
+                                    const char *currency) {
+  data->account = account;
+  if (posting_amount_string != NULL) {
+    data->amount =
+        (i64)(atof(posting_amount_string) * pow(10.00, HX_CBP_PRECISION));
+  } else {
+    data->amount = 0;
+  }
+  data->quoted_amount = 0;
+  data->quoted_currency = NULL;
+  CBP_PtrSafeAssign(char, data->currency, strdup(currency),
+                    free_and_return_err);
+  return HX_OK;
+free_and_return_err:
+  CBP_GracefulDestroy(free, data->currency);
+  return HX_ERR;
+}
+
 CBP_Object *CBP_Models_GetBeancountPosting(const CBP_BeancountAccount *account,
                                            const char *posting_amount_string,
                                            const char *currency) {
@@ -64,22 +85,24 @@ CBP_Object *CBP_Models_GetBeancountPosting(const CBP_BeancountAccount *account,
                                   CBP_Models_CopyBeancountPosting, NULL),
                     return_null);
   CBP_BeancountPosting *posting_data = posting->data;
-  posting_data->account = account;
-  if (posting_amount_string != NULL) {
-    posting_data->amount =
-        (i64)(atof(posting_amount_string) * pow(10.00, HX_CBP_PRECISION));
-  } else {
-    posting_data->amount = 0;
+  if (CBP_Models_InitBeancountPosting(
+          posting_data, account, posting_amount_string, currency) != HX_OK) {
+    goto free_and_return_null;
   }
-  posting_data->quoted_amount = 0;
-  posting_data->quoted_currency = NULL;
-  CBP_PtrSafeAssign(char, posting_data->currency, strdup(currency),
-                    free_and_return_null);
   return posting;
 free_and_return_null:
   CBP_GracefulDestroy(CBP_DestroyObject, posting);
 return_null:
   return NULL;
+}
+
+int CBP_Models_InitQuotedBeancountPosting(CBP_BeancountPosting *data,
+                                          const CBP_BeancountAccount *account,
+                                          const char *original_amount_string,
+                                          const char *original_currency,
+                                          const char *quoted_amount_string,
+                                          const char *quoted_currency) {
+  return HX_OK;
 }
 
 CBP_Object *CBP_Models_GetQuotedBeancountPosting(
@@ -209,4 +232,21 @@ int CBP_Models_DestroyBeancountAccount(void *data) {
   CBP_GracefulDestroy(free, account_data->name);
   CBP_GracefulDestroy(CBP_DestroyObject, account_data->opened_at);
   return HX_OK;
+}
+
+CBP_Object *CBP_Models_GetBeancountJournalEntry() {
+  CBP_Object *entry_obj = NULL;
+  CBP_PtrSafeAssign(CBP_Object, entry_obj,
+                    CBP_GetCustom(NULL, sizeof(CBP_BeancountJournalEntry),
+                                  CBP_Models_DestroyBeancountJournalEntry,
+                                  CBP_Models_CopyBeancountJournalEntry, NULL),
+                    return_null);
+  CBP_BeancountJournalEntry *entry = entry_obj->data;
+  entry->payee = NULL;
+  entry->posted_at = NULL;
+  entry->postings = CBP_GetArray();
+  entry->remarks = NULL;
+  return entry_obj;
+return_null:
+  return NULL;
 }

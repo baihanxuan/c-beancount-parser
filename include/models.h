@@ -30,6 +30,7 @@ typedef struct {
   CBP_Array *postings;   // CBP_BeancountPosting[]
 } CBP_BeancountJournalEntry;
 
+CBP_Object* CBP_Models_GetBeancountJournalEntry();
 int CBP_Models_DestroyBeancountJournalEntry(void *);
 int CBP_Models_CopyBeancountJournalEntry(void *dst, const void *src);
 

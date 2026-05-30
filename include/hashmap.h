@@ -26,6 +26,8 @@ CBP_HashMap *CBP_GetHashMap();
 int CBP_HashMap_Upsert(CBP_HashMap *hash_map, const CBP_Object *key,
                        const CBP_Object *value);
 
+int CBP_HashMap_Delete(CBP_HashMap *hash_map, const CBP_Object *key);
+
 int CBP_HashMap_Destroy(CBP_HashMap *hash_map);
 
 int CBP_HashMap_ObjectCompatibleDestroy(void *data);

@@ -93,8 +93,17 @@ int CBP_HashMap_Upsert(CBP_HashMap *hash_map, const CBP_Object *key,
 
   if (CBP_Eq(cell->key, key)) {
     CBP_DestroyObject(cell->value);
-    cell->value = CBP_CopyFromObject(value);
+    if (value != NULL) {
+      cell->value = CBP_CopyFromObject(value);
+    } else {
+      CBP_Nullify(cell->value);
+    }
     return HX_OK;
+  }
+
+  if (value == NULL) {
+    goto return_err; // Resetting to NULL is only allowed for existing key-value
+                     // pairs.
   }
 
   CBP_HashCell *target_cell = NULL;
@@ -120,6 +129,10 @@ int CBP_HashMap_Upsert(CBP_HashMap *hash_map, const CBP_Object *key,
   return HX_OK;
 return_err:
   return HX_ERR;
+}
+
+int CBP_HashMap_Delete(CBP_HashMap *hash_map, const CBP_Object *key) {
+  return CBP_HashMap_Upsert(hash_map, key, NULL);
 }
 
 CBP_Object *CBP_HashMap_RetrieveByKey(CBP_HashMap *hash_map,
