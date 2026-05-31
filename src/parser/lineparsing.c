@@ -366,10 +366,12 @@ CBP_Object *cbp_ParseIndentedQuoted(CBP_Parser *parser, CBP_Array *tokens,
                                     5, return_err);
 
   if (CBP_EqCstring(at, "@")) {
+    /*
     double per_unit_fx_rate = atof(target_amount->data);
     double posting_amount_double = atof(posting_amount->data);
     *value_to_push = (i64)(per_unit_fx_rate * pow(10.00, HX_CBP_PRECISION) *
                            posting_amount_double);
+
     char at_buffer[BUFFER_SIZE + 1];
     snprintf(at_buffer, BUFFER_SIZE, "%.2lf",
              (double)(*value_to_push) / pow(10.00, HX_CBP_PRECISION));
@@ -377,6 +379,17 @@ CBP_Object *cbp_ParseIndentedQuoted(CBP_Parser *parser, CBP_Array *tokens,
         (const CBP_BeancountAccount *)account->data,
         (const char *)posting_amount->data, (const char *)currency->data,
         at_buffer, (const char *)target_currency->data);
+        */
+
+    i64 per_unit_fx_rate_fixed_point_repr =
+        CBP_Arith_GetFixedPointRepr(target_amount->data);
+    i64 posting_amount_fixed_point_repr =
+        CBP_Arith_GetFixedPointRepr(posting_amount->data);
+    *value_to_push = CBP_Arith_GetQuotedFixedPointRepr(
+        posting_amount_fixed_point_repr, per_unit_fx_rate_fixed_point_repr);
+    posting_object_to_push = CBP_Models_GetQuotedBeancountPostingByRawValue(
+        (const CBP_BeancountAccount *)account->data,
+        (char *)posting_amount->data, (char *)currency->data, *value_to_push, target_currency->data);
   } else if (CBP_EqCstring(at, "@@")) {
     *value_to_push =
         (i64)(atof(target_amount->data) * pow(10.00, HX_CBP_PRECISION));
@@ -478,7 +491,7 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
     posting_object_to_push = CBP_Models_GetBeancountPosting(
         (const CBP_BeancountAccount *)(account->data),
         (const char *)posting_amount->data, (const char *)currency->data);
-        currency_to_push = currency;
+    currency_to_push = currency;
   } else if (tokens->size == 6) {
     currency_to_push = malloc(sizeof(CBP_Object));
     CBP_InitNullObj(currency_to_push);

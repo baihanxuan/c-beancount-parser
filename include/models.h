@@ -30,7 +30,7 @@ typedef struct {
   CBP_Array *postings;   // CBP_BeancountPosting[]
 } CBP_BeancountJournalEntry;
 
-CBP_Object* CBP_Models_GetBeancountJournalEntry();
+CBP_Object *CBP_Models_GetBeancountJournalEntry();
 int CBP_Models_DestroyBeancountJournalEntry(void *);
 int CBP_Models_CopyBeancountJournalEntry(void *dst, const void *src);
 
@@ -53,5 +53,10 @@ CBP_Object *CBP_Models_GetBeancountAccount(const char *name,
 
 int CBP_Models_CopyBeancountAccount(void *dst, const void *src);
 int CBP_Models_DestroyBeancountAccount(void *);
+
+CBP_Object *CBP_Models_GetQuotedBeancountPostingByRawValue(
+    const CBP_BeancountAccount *account, const char *original_amount_string,
+    const char *original_currency, long long quoted_amount_fixed_point_repr,
+    const char *quoted_currency);
 
 #endif

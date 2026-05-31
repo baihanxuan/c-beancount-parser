@@ -105,6 +105,27 @@ int CBP_Models_InitQuotedBeancountPosting(CBP_BeancountPosting *data,
   return HX_OK;
 }
 
+// This is minimum change. [TODO] Rewrite everything with CBP_Arith_*.
+
+CBP_Object *CBP_Models_GetQuotedBeancountPostingByRawValue(
+    const CBP_BeancountAccount *account, const char *original_amount_string,
+    const char *original_currency, i64 quoted_amount_fixed_point_repr,
+    const char *quoted_currency) {
+  CBP_Object *posting = NULL;
+  CBP_PtrSafeAssign(CBP_Object, posting,
+                    CBP_Models_GetBeancountPosting(
+                        account, original_amount_string, original_currency),
+                    return_null);
+  CBP_BeancountPosting *posting_data = posting->data;
+  posting_data->quoted_amount = quoted_amount_fixed_point_repr;
+  CBP_PtrSafeAssign(char, posting_data->quoted_currency,
+                    strdup(quoted_currency), return_null);
+  return posting;
+return_null:
+  CBP_GracefulDestroy(CBP_DestroyObject, posting);
+  return NULL;
+}
+
 CBP_Object *CBP_Models_GetQuotedBeancountPosting(
     const CBP_BeancountAccount *account, const char *original_amount_string,
     const char *original_currency, const char *quoted_amount_string,

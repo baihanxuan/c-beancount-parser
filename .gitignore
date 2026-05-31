@@ -6,3 +6,5 @@ build/**
 
 src/main.c
 src/parser.c
+
+compile_commands.json

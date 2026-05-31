@@ -28,10 +28,10 @@ target_link_libraries(cbcparser PRIVATE Threads::Threads)
 
 # C-beancount-parser is intended to be a shared library.
 
-add_executable(
-    cbp
-    src/main.c
-)
+# add_executable(
+#    cbp
+#    src/main.c
+# )
 
-target_link_libraries(cbp PRIVATE cbcparser)
+# target_link_libraries(cbp PRIVATE cbcparser)
 

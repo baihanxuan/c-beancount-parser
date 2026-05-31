@@ -2,6 +2,7 @@
 // This file is part of c-beancount-parser, licensed under GNU GPLv2 Only.
 // See the COPYING file for details.
 
+#include "arithmetics.h"
 #include "array.h"
 #include "date.h"
 #include "errors.h"
@@ -13,6 +14,7 @@
 #include <dirent.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -130,6 +132,7 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
   CBP_Object *reconciled_account_current_balance =
       CBP_HashMap_RetrieveByKey(account_balance_hashmap, target_currency);
 
+      /*
   double current_balance_f64 = 0.00;
 
   if (reconciled_account_current_balance == NULL) {
@@ -143,8 +146,19 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
   char buffer[BUFFER_SIZE + 1];
 
   double delta = atof(target_balance->data) - current_balance_f64;
+  */
 
-  if (fabs(delta - 0.00) < HX_EPSILON) {
+  i64 current_balance_i64 = 0;
+
+  if (reconciled_account_current_balance == NULL) {
+    current_balance_i64 = 0;
+  } else {
+    current_balance_i64 = *(i64 *)reconciled_account_current_balance->data;
+  }
+
+  i64 delta = CBP_Arith_GetFixedPointRepr(target_balance->data) - current_balance_i64;
+
+  if (delta == 0) {
     goto free_and_return_ok;
   } else {
     if (CBP_IsNullObj(contra_account_obj)) {
@@ -152,17 +166,16 @@ int cbp_ProcessBalanceDirective(CBP_Parser *parser, CBP_Array tokens) {
     }
   }
 
-  snprintf(buffer, BUFFER_SIZE, "%.2lf", delta);
 
   CBP_PtrSafeAssign(CBP_Object, delta_obj,
-                    CBP_GetInt(delta * pow(10.00, HX_CBP_PRECISION)),
+                    CBP_GetInt(delta),
                     return_err);
   CBP_HashMap_Upsert(parser->current_txn_states.balance_map, target_currency,
                      delta_obj);
 
   CBP_PtrSafeAssign(CBP_Object, posting_obj,
-                    CBP_Models_GetBeancountPosting(reconciled_account_obj->data,
-                                                   buffer,
+                    CBP_Models_GetBeancountPostingByRawValue(reconciled_account_obj->data,
+                                                   delta,
                                                    target_currency->data),
                     return_err);
 
