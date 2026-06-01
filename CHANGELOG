@@ -19,3 +19,9 @@ Made cosmetic changes.
 v1.0.1b
 
 - Added balance tracking for accounts.
+
+---
+
+v1.0.1c
+
+- Handles pad-balance directive right. At least they looked good to me.

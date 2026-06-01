@@ -236,6 +236,9 @@ int CBP_Nullify(CBP_Object *obj) {
       free(obj->data);
     }
   }
+  obj->compare_function = NULL;
+  obj->copy_function = NULL;
+  obj->destroy_function = NULL;
   obj->element_size = 0;
   obj->type = NULLOBJ;
   return HX_OK;
@@ -270,6 +273,9 @@ int CBP_InitNullObj(CBP_Object *obj) {
   obj->type = NULLOBJ;
   obj->data = NULL;
   obj->element_size = 0;
+  obj->compare_function = NULL;
+  obj->copy_function = NULL;
+  obj->destroy_function = NULL;
   return HX_OK;
 }
 

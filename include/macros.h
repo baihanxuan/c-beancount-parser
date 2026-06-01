@@ -14,6 +14,7 @@
 #define HX_ERR 1
 
 #define BUFFER_SIZE 2048
+#define HX_EPSILON 1e-6
 
 #define CBP_PtrSafeAssign(type, lhs, rhs, error_goto)                          \
   {                                                                            \
