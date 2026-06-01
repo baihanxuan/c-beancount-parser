@@ -25,3 +25,9 @@ v1.0.1b
 v1.0.1c
 
 - Handles pad-balance directive right. At least they looked good to me.
+
+---
+
+v1.0.2a
+
+Still MVP, but with idiomatic C.

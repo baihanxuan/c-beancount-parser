@@ -3,26 +3,28 @@
 // See the COPYING file for details.
 
 #include "errors.h"
+#include "array_new.h"
 #include "macros.h"
-#include "object.h"
-#include "parser.h"
+// #include "object.h"
+#include "data.h"
+#include "parser_new.h"
 #include <stdarg.h>
 #include <stdio.h>
 
 int CBP_Parser_RegisterError(CBP_Parser *parser, const char *format, ...) {
-  if (!CBP_IsNullObj(parser->states.nearest_error)) {
-    CBP_DestroyObject(parser->states.nearest_error);
+  if (parser == NULL || format == NULL) {
+    return HX_ERR;
   }
   char buffer[BUFFER_SIZE + 1];
   int written_bytes =
       snprintf(buffer, BUFFER_SIZE,
-               "In %s, line %llu: ", parser->states.current_working_file_name,
+               "In %s, line %llu: ", parser->states.current_file_name,
                parser->states.line);
   va_list args;
   va_start(args, format);
   vsnprintf(buffer + written_bytes, BUFFER_SIZE, format, args);
   va_end(args);
-  parser->states.nearest_error = CBP_GetString(buffer);
+  CBP_Array_PushString(parser->error_list, buffer);
   return HX_OK;
 }
 
