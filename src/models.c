@@ -3,10 +3,10 @@
 // See the COPYING file for details.
 
 #include "models.h"
+#include "arithmetics.h"
 #include "array.h"
 #include "macros.h"
 #include "object.h"
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +61,8 @@ int CBP_Models_InitBeancountPosting(CBP_BeancountPosting *data,
   data->account = account;
   if (posting_amount_string != NULL) {
     data->amount =
-        (i64)(atof(posting_amount_string) * pow(10.00, HX_CBP_PRECISION));
+        // (i64)(atof(posting_amount_string) * pow(10.00, HX_CBP_PRECISION));
+        CBP_Arith_GetFixedPointRepr(posting_amount_string);
   } else {
     data->amount = 0;
   }
@@ -137,9 +138,10 @@ CBP_Object *CBP_Models_GetQuotedBeancountPosting(
                     return_null);
 
   CBP_BeancountPosting *posting_data = posting->data;
-  posting_data->quoted_amount =
-      (i64)(atof(quoted_amount_string) * pow(10.00, HX_CBP_PRECISION) *
-            ((original_amount_string[0] == '-') ? -1 : 1));
+  // posting_data->quoted_amount =
+  //     (i64)(atof(quoted_amount_string) * pow(10.00, HX_CBP_PRECISION) *
+  //           ((original_amount_string[0] == '-') ? -1 : 1));
+  posting_data->quoted_amount = CBP_Arith_GetFixedPointRepr(quoted_amount_string) * ((original_amount_string[0] == '-') ? -1 : 1);
   CBP_PtrSafeAssign(char, posting_data->quoted_currency,
                     strdup(quoted_currency), free_and_return_null);
   return posting;
@@ -252,6 +254,7 @@ int CBP_Models_DestroyBeancountAccount(void *data) {
   account_data->currencies = NULL; // [TODO] to be implemented
   CBP_GracefulDestroy(free, account_data->name);
   CBP_GracefulDestroy(CBP_DestroyObject, account_data->opened_at);
+  free(account_data);
   return HX_OK;
 }
 

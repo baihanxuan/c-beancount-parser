@@ -12,7 +12,6 @@
 #include "object.h"
 #include "parser.h"
 #include <dirent.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -387,12 +386,16 @@ CBP_Object *cbp_ParseIndentedQuoted(CBP_Parser *parser, CBP_Array *tokens,
         CBP_Arith_GetFixedPointRepr(posting_amount->data);
     *value_to_push = CBP_Arith_GetQuotedFixedPointRepr(
         posting_amount_fixed_point_repr, per_unit_fx_rate_fixed_point_repr);
+    // printf("[DEBUG] @. val_to_push = %lld\n", *value_to_push);
     posting_object_to_push = CBP_Models_GetQuotedBeancountPostingByRawValue(
         (const CBP_BeancountAccount *)account->data,
-        (char *)posting_amount->data, (char *)currency->data, *value_to_push, target_currency->data);
+        (const char *)posting_amount->data, (const char *)currency->data,
+        *value_to_push, target_currency->data);
   } else if (CBP_EqCstring(at, "@@")) {
-    *value_to_push =
-        (i64)(atof(target_amount->data) * pow(10.00, HX_CBP_PRECISION));
+    // *value_to_push =
+    //     (i64)(atof(target_amount->data) * pow(10.00, HX_CBP_PRECISION));
+    *value_to_push = CBP_Arith_GetFixedPointRepr(target_amount->data);
+    // printf("[DEBUG] @@. val_to_push = %lld\n", *value_to_push);
     posting_object_to_push = CBP_Models_GetQuotedBeancountPosting(
         (const CBP_BeancountAccount *)(account->data),
         (const char *)posting_amount->data, (const char *)currency->data,
@@ -479,13 +482,15 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
   CBP_Object *posting_amount = NULL;
   CBP_Object *currency = NULL;
   CBP_Object *posting_object_to_push = NULL;
+  CBP_Object *target_value_obj = NULL;
 
   CBP_Array_TypeCheckedSafeGetValue(posting_amount, parser, STRING,
                                     "posting::amount", tokens, 1, return_err);
   CBP_Array_TypeCheckedSafeGetValue(currency, parser, STRING,
                                     "posting::currency", tokens, 2, return_err);
-  value_to_push =
-      (i64)(atof(posting_amount->data) * pow(10.00, HX_CBP_PRECISION));
+  // value_to_push =
+  //     (i64)(atof(posting_amount->data) * pow(10.00, HX_CBP_PRECISION));
+  value_to_push = CBP_Arith_GetFixedPointRepr(posting_amount->data);
   // currency_to_push = currency;
   if (tokens->size == 3) {
     posting_object_to_push = CBP_Models_GetBeancountPosting(
@@ -502,8 +507,6 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
       goto return_err;
     }
   }
-
-  CBP_Object *target_value_obj = NULL;
 
   CBP_Object *existing_balance = CBP_HashMap_RetrieveByKey(
       parser->current_txn_states.balance_map, currency_to_push);
@@ -522,10 +525,14 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
                          currency_to_push, target_value_obj) != HX_OK) {
     goto return_err;
   }
+  // CBP_GracefulDestroy(CBP_DestroyObject, currency_to_push);
   CBP_GracefulDestroy(CBP_DestroyObject, target_value_obj);
   CBP_GracefulDestroy(CBP_DestroyObject, posting_object_to_push);
   return HX_OK;
 return_err:
+  // CBP_GracefulDestroy(CBP_DestroyObject, currency_to_push);
+  CBP_GracefulDestroy(CBP_DestroyObject, target_value_obj);
+  CBP_GracefulDestroy(CBP_DestroyObject, posting_object_to_push);
   return HX_ERR;
 }
 

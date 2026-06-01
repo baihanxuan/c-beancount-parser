@@ -5,11 +5,13 @@
 #include "arithmetics.h"
 #include "macros.h"
 #include "models.h"
+#include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 double CBP_Arith_RawRepresentationToDouble(long long raw_value) {
-  return (double)(raw_value) / (double)HX_CBP_PRECISION;
+  return (double)(raw_value) / (double)pow(10, HX_CBP_PRECISION);
 }
 
 i64 CBP_Arith_GetFixedPointRepr(const char *string_value) {
@@ -27,28 +29,33 @@ i64 CBP_Arith_GetFixedPointRepr(const char *string_value) {
   }
   i64 result = 0;
   int is_negative = decimal[0] == '-';
-  for (u64 i = strlen(decimal) - 1; i >= is_negative; i--) {
+  // printf("[DEBUG] decimal = %s, fractional = %s\n", decimal, fractional);
+  for (i64 i = is_negative; i < strlen(decimal); i++) {
     if (decimal[i] >= '0' && decimal[i] <= '9') {
       result *= 10;
       result += (decimal[i] - '0');
     }
   }
-  result *= 100;
+  result *= 10;
   for (u64 i = 0; i < strlen(fractional); i++) {
-    if (decimal[i] >= '0' && decimal[i] <= '9') {
-      result += (decimal[i] - '0');
+    if (fractional[i] >= '0' && fractional[i] <= '9') {
+      result += (fractional[i] - '0');
       if (i != strlen(fractional) - 1) {
         result *= 10;
       }
     }
   }
+  result *= (is_negative ? -1 : 1);
+  // printf("[DEBUG] result = %lld\n", result);
+  return result;
 return_err:
   CBP_GracefulDestroy(free, decimal);
   CBP_GracefulDestroy(free, fractional);
   return 0;
 }
 
-i64 CBP_Arith_GetQuotedFixedPointRepr(i64 original_fixed_point_repr, i64 fx_rate_fixed_point_repr) {
+i64 CBP_Arith_GetQuotedFixedPointRepr(i64 original_fixed_point_repr,
+                                      i64 fx_rate_fixed_point_repr) {
   i64 result = original_fixed_point_repr * fx_rate_fixed_point_repr;
-  return result / 100 + (result % 100 >= 50);
+  return (result / 100) + ((result % 100) >= 50);
 }

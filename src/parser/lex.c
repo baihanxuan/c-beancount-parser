@@ -12,10 +12,7 @@
 #include "object.h"
 #include "parser.h"
 #include <dirent.h>
-#include <math.h>
 #include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 int cbp_ProcessPadDirective(CBP_Parser *parser, CBP_Array tokens) {
