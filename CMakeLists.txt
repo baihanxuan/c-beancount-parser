@@ -13,7 +13,6 @@ include_directories(./include)
 add_library(cbcparser SHARED
     src/array.c
     src/object.c
-    src/parser.c
     src/files.c
     src/hashmap.c
     src/errors.c

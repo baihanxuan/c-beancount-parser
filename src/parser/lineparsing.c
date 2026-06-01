@@ -488,10 +488,8 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
                                     "posting::amount", tokens, 1, return_err);
   CBP_Array_TypeCheckedSafeGetValue(currency, parser, STRING,
                                     "posting::currency", tokens, 2, return_err);
-  // value_to_push =
-  //     (i64)(atof(posting_amount->data) * pow(10.00, HX_CBP_PRECISION));
+
   value_to_push = CBP_Arith_GetFixedPointRepr(posting_amount->data);
-  // currency_to_push = currency;
   if (tokens->size == 3) {
     posting_object_to_push = CBP_Models_GetBeancountPosting(
         (const CBP_BeancountAccount *)(account->data),
@@ -525,12 +523,10 @@ int cbp_ParseIndentedHelper(CBP_Parser *parser, CBP_Array *tokens,
                          currency_to_push, target_value_obj) != HX_OK) {
     goto return_err;
   }
-  // CBP_GracefulDestroy(CBP_DestroyObject, currency_to_push);
   CBP_GracefulDestroy(CBP_DestroyObject, target_value_obj);
   CBP_GracefulDestroy(CBP_DestroyObject, posting_object_to_push);
   return HX_OK;
 return_err:
-  // CBP_GracefulDestroy(CBP_DestroyObject, currency_to_push);
   CBP_GracefulDestroy(CBP_DestroyObject, target_value_obj);
   CBP_GracefulDestroy(CBP_DestroyObject, posting_object_to_push);
   return HX_ERR;

@@ -29,7 +29,6 @@ i64 CBP_Arith_GetFixedPointRepr(const char *string_value) {
   }
   i64 result = 0;
   int is_negative = decimal[0] == '-';
-  // printf("[DEBUG] decimal = %s, fractional = %s\n", decimal, fractional);
   for (i64 i = is_negative; i < strlen(decimal); i++) {
     if (decimal[i] >= '0' && decimal[i] <= '9') {
       result *= 10;
@@ -46,7 +45,8 @@ i64 CBP_Arith_GetFixedPointRepr(const char *string_value) {
     }
   }
   result *= (is_negative ? -1 : 1);
-  // printf("[DEBUG] result = %lld\n", result);
+  CBP_GracefulDestroy(free, decimal);
+  CBP_GracefulDestroy(free, fractional);
   return result;
 return_err:
   CBP_GracefulDestroy(free, decimal);
