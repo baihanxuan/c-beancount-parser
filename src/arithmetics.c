@@ -4,14 +4,13 @@
 
 #include "arithmetics.h"
 #include "macros.h"
-#include "models.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 double CBP_Arith_RawRepresentationToDouble(long long raw_value) {
-  return (double)(raw_value) / (double)pow(10, HX_CBP_PRECISION);
+  return (double)(raw_value) / (double)pow(10, 2);
 }
 
 i64 CBP_Arith_GetFixedPointRepr(const char *string_value) {

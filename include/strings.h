@@ -14,4 +14,6 @@
 
 // CBP_StringBuilder* CBP_Strings_GetBuilder();
 
+// const char* CBP_Strings_GetFromRange();
+
 #endif

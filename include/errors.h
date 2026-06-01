@@ -5,7 +5,7 @@
 #ifndef HX_CBP_ERRORS_H
 #define HX_CBP_ERRORS_H
 
-#include "parser.h"
+#include "parser_new.h"
 
 // int CBP_Parser_RegisterError(CBP_Parser *parser, const char *what);
 int CBP_Parser_RegisterError(CBP_Parser* parser, const char* format, ...);

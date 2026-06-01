@@ -6,6 +6,8 @@
 
 #define HX_CBP_FILES_H
 
+#define HX_CBP_FILES_NAME_CAP 256
+
 // Gets the path of the given file from a full path string.
 // For example, if full_path = "C:\something\another_thing\voila.txt"
 // Then it will return "C:\something\another_thing".
