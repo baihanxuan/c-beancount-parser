@@ -5,16 +5,19 @@
 #ifndef HX_CBP_DATE_H
 #define HX_CBP_DATE_H
 
-// #include "object.h"
-
 #include <stdbool.h>
+#include <stdint.h>
+
+#ifdef _WIN32
+#define CBP_DATE_FORMATSTRING "%llu-%llu-%llu"
+#elifdef __linux__
+#define CBP_DATE_FORMATSTRING "%lu-%lu-%lu"
+#endif
+
 typedef struct {
-  unsigned long long year, month, day;
+  uint64_t year, month, day;
 } CBP_Date;
 
-// CBP_Object *CBP_GetDate(const CBP_Object *value);
-
-// int CBP_Date_Destroy(void *);
 
 extern bool CBP_Date_IsValidDateString(const char* string);
 

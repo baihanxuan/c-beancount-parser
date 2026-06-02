@@ -22,7 +22,7 @@ int cbp_IsLeapYear(uint64_t year) {
 
 bool CBP_Date_IsValidDateString(const char *string) {
   uint64_t y, m, d;
-  if (sscanf(string, "%llu-%llu-%llu", &y, &m, &d) != 3) {
+  if (sscanf(string, CBP_DATE_FORMATSTRING, &y, &m, &d) != 3) {
     return false;
   }
 
@@ -54,7 +54,7 @@ bool CBP_Date_IsValidDateString(const char *string) {
 
 int CBP_Date_Init(CBP_Date *date, const char *string) {
   uint64_t y, m, d;
-  if (sscanf(string, "%llu-%llu-%llu", &y, &m, &d) != 3) {
+  if (sscanf(string, CBP_DATE_FORMATSTRING, &y, &m, &d) != 3) {
     return HX_ERR;
   }
   date->year = y, date->month = m, date->day = d;
