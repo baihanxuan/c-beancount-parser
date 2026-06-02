@@ -67,6 +67,16 @@ jobs:
       if: runner.os == 'Linux'
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
+    - name: Upload artifact (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        cp "${{ steps.strings.outputs.build-output-dir }}/libcbcparser.so" "libcbcparser-linux-${{ matrix.c_compiler }}.so"
+    - uses: actions/upload-artifact@v4
+      if: runner.os == 'Linux'
+      with:
+        name: cbcparser-linux-${{ matrix.c_compiler }}
+        path: libcbcparser-linux-${{ matrix.c_compiler }}.so
+
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
       shell: msys2 {0}
@@ -82,3 +92,42 @@ jobs:
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: cmake --build build --config ${{ matrix.build_type }}
+
+    - name: Upload artifact (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: |
+        cp build/libcbcparser.dll "libcbcparser-windows-${{ matrix.c_compiler }}.dll"
+    - uses: actions/upload-artifact@v4
+      if: runner.os == 'Windows'
+      with:
+        name: cbcparser-windows-${{ matrix.c_compiler }}
+        path: libcbcparser-windows-${{ matrix.c_compiler }}.dll
+
+  release:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create/Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Latest Build (mvp)
+          tag_name: latest
+          prerelease: true
+          files: artifacts/*
+          body: |
+            Automated build from `mvp` branch.
+
+            | Platform | Compiler | Artifact |
+            |----------|----------|----------|
+            | Linux x86_64 | gcc | `libcbcparser.so` |
+            | Linux x86_64 | clang | `libcbcparser.so` |
+            | Windows x86_64 | gcc (UCRT64) | `libcbcparser.dll` |
