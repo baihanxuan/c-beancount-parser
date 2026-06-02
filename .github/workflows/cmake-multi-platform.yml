@@ -29,18 +29,15 @@ jobs:
           - os: windows-latest
             c_compiler: gcc
             cpp_compiler: g++
-            msystem: UCRT64
         exclude:
           - os: windows-latest
             c_compiler: clang
-          - os: ubuntu-latest
-            c_compiler: cl
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Setup MSYS2 for Windows
-      if: matrix.msystem
+      if: runner.os == 'Windows'
       uses: msys2/setup-msys2@v2
       with:
         msystem: UCRT64
@@ -57,16 +54,31 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Configure CMake
-      shell: ${{ matrix.msystem && 'msys2 {0}' || 'bash' }}
+    - name: Configure CMake (Linux)
+      if: runner.os == 'Linux'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        ${{ matrix.msystem && '-G Ninja' || '' }}
         -S ${{ github.workspace }}
 
-    - name: Build
-      shell: ${{ matrix.msystem && 'msys2 {0}' || 'bash' }}
+    - name: Build (Linux)
+      if: runner.os == 'Linux'
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -G Ninja
+        -S ${{ github.workspace }}
+
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
