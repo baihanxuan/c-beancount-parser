@@ -10,7 +10,7 @@
 #include <string.h>
 
 
-double CBP_Arith_RawRepresentationToDouble(long long raw_value) {
+double CBP_Arith_RawRepresentationToDouble(int64_t raw_value) {
   return (double)(raw_value) / (double)pow(10, 2);
 }
 
