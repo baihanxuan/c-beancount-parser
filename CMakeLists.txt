@@ -3,7 +3,7 @@ project(CBeancountParser VERSION 1.0.2 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 23)
 
-find_package(Threads REQUIRED)
+# find_package(Threads REQUIRED)
 
 # debug
 # set(CMAKE_BUILD_TYPE DEBUG)
@@ -21,7 +21,7 @@ add_library(cbcparser SHARED
     src/hashmap.c
     src/models.c
 )
-target_link_libraries(cbcparser PRIVATE Threads::Threads)
+# target_link_libraries(cbcparser PRIVATE Threads::Threads)
 
 # C-beancount-parser is intended to be a shared library.
 
