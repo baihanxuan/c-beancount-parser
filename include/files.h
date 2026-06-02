@@ -6,6 +6,7 @@
 
 #define HX_CBP_FILES_H
 
+#include <stdint.h>
 #define HX_CBP_FILES_NAME_CAP 256
 
 // Gets the path of the given file from a full path string.
@@ -14,10 +15,10 @@
 char *CBP_GetFilePath(const char *full_path);
 
 // Separates the path and the file name from a full path string.
-int CBP_SeparatePathAndName(char *path, unsigned long long path_cap,
-                            char *file_name, unsigned long long file_name_cap,
-                            unsigned long long *path_len,
-                            unsigned long long *file_name_len,
+int CBP_SeparatePathAndName(char *path, uint64_t path_cap,
+                            char *file_name, uint64_t file_name_cap,
+                            uint64_t *path_len,
+                            uint64_t *file_name_len,
                             const char *full_path);
 
 // Concatenates paths
