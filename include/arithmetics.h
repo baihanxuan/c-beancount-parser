@@ -5,11 +5,13 @@
 #ifndef HX_CBP_ARITHMETICS_H
 #define HX_CBP_ARITHMETICS_H
 
-double CBP_Arith_RawRepresentationToDouble(long long raw_value);
+#include <stdint.h>
+
+double CBP_Arith_RawRepresentationToDouble(int64_t raw_value);
 
 // Note that the two functions are all based on an assumption that HX_CBP_PRECISION == 2.
 // This may be changed later.
 long long CBP_Arith_GetFixedPointRepr(const char*);
 
-long long CBP_Arith_GetQuotedFixedPointRepr(long long, long long);
+long long CBP_Arith_GetQuotedFixedPointRepr(int64_t, int64_t);
 #endif

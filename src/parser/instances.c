@@ -2,10 +2,10 @@
 // This file is part of c-beancount-parser, licensed under GNU GPLv2 Only.
 // See the COPYING file for details.
 
-#include "array_new.h"
-#include "hashmap_new.h"
+#include "array.h"
+#include "hashmap.h"
 #include "macros.h"
-#include "parser_new.h"
+#include "parser.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -206,12 +206,18 @@ int CBP_CleanupParser(CBP_Parser *parser) {
   }
   if (parser->accounts != NULL) {
     CBP_HashMap_Cleanup(parser->accounts);
+    free(parser->accounts);
+    parser->accounts = NULL;
   }
   if (parser->journal_entries != NULL) {
     CBP_Array_Cleanup(parser->journal_entries);
+    free(parser->journal_entries);
+    parser->journal_entries = NULL;
   }
   if (parser->error_list != NULL) {
     CBP_Array_Cleanup(parser->error_list);
+    free(parser->error_list);
+    parser->error_list = NULL;
   }
   CBP_Parser_CleanupStates(&parser->states);
   CBP_Parser_CleanupCurrentTxnStates(&parser->current_txn_states);

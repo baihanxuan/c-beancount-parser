@@ -2,7 +2,7 @@
 // This file is part of c-beancount-parser, licensed under GNU GPLv2 Only.
 // See the COPYING file for details.
 
-#include "models_new.h"
+#include "models.h"
 #include "macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -19,28 +19,27 @@ int CBP_Models_CopyPosting(CBP_BeancountPosting *dst_posting,
   if (src_posting->quoted_currency != NULL) {
     dst_posting->quoted_currency = strdup(src_posting->quoted_currency);
     if (dst_posting->quoted_currency == NULL) {
-      if (dst_posting->account != NULL) {
-        free(dst_posting->account);
-      }
-      if (dst_posting->currency != NULL) {
-        free(dst_posting->currency);
-      }
-      return HX_ERR;
+      goto cleanup_and_return_err;
     }
+  } else {
+    dst_posting->quoted_currency = NULL;
   }
 
   if (dst_posting->account == NULL || dst_posting->currency == NULL) {
-    if (dst_posting->account != NULL) {
-      free(dst_posting->account);
-    }
-    if (dst_posting->currency != NULL) {
-      free(dst_posting->currency);
-    }
-    if (dst_posting->quoted_currency != NULL) {
-      free(dst_posting->quoted_currency);
-    }
+    goto cleanup_and_return_err;
   }
   return HX_OK;
+cleanup_and_return_err:
+  if (dst_posting->account != NULL) {
+    free(dst_posting->account);
+  }
+  if (dst_posting->currency != NULL) {
+    free(dst_posting->currency);
+  }
+  if (dst_posting->quoted_currency != NULL) {
+    free(dst_posting->quoted_currency);
+  }
+  return HX_ERR;
 }
 
 int CBP_Models_CopyAccount(CBP_BeancountAccount *dst_account,
@@ -88,6 +87,7 @@ int CBP_Models_CleanupAccount(CBP_BeancountAccount *account) {
   }
   CBP_HashMap_Cleanup(&account->balance);
   CBP_Array_Cleanup(&account->currencies);
+  free(account);
   return HX_OK;
 }
 
@@ -99,5 +99,6 @@ int CBP_Models_CleanupEntry(CBP_BeancountJournalEntry *entry) {
     free(entry->remarks);
   }
   CBP_Array_Cleanup(&entry->postings);
+  free(entry);
   return HX_OK;
 }

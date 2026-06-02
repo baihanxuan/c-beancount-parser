@@ -5,9 +5,9 @@
 #ifndef HX_CBP_PARSER_H
 #define HX_CBP_PARSER_H
 
-#include "array_new.h"
+#include "array.h"
 #include "date.h"
-#include "hashmap_new.h"
+#include "hashmap.h"
 #include <stdbool.h>
 
 typedef struct {

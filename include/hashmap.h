@@ -5,7 +5,7 @@
 #ifndef HX_CBP_HASHMAP_H
 #define HX_CBP_HASHMAP_H
 
-#include "array_new.h"
+#include "array.h"
 #include "data.h"
 
 typedef struct CBP_HashCell {

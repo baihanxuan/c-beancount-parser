@@ -5,9 +5,11 @@
 #include "files.h"
 #include "macros.h"
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 #ifdef _WIN32
 #define SLASH '\\'
@@ -28,7 +30,7 @@ char *CBP_GetFilePath(const char *full_path) {
       goto return_current_path;
     }
   }
-  u64 length = last_slash_pos - full_path;
+  uint64_t length = last_slash_pos - full_path;
   if (length == 0) {
     length = 1;
   }
@@ -45,9 +47,9 @@ return_current_path:
   return path;
 }
 
-int CBP_SeparatePathAndName(char *path, u64 path_cap, char *file_name,
-                            u64 file_name_cap, u64 *path_len,
-                            u64 *file_name_len, const char *full_path) {
+int CBP_SeparatePathAndName(char *path, uint64_t path_cap, char *file_name,
+                            uint64_t file_name_cap, uint64_t *path_len,
+                            uint64_t *file_name_len, const char *full_path) {
   if (full_path == NULL) {
     return HX_ERR;
   }
@@ -60,7 +62,7 @@ int CBP_SeparatePathAndName(char *path, u64 path_cap, char *file_name,
     }
   }
 
-  u64 length = last_slash_pos - full_path;
+  uint64_t length = last_slash_pos - full_path;
   if (length == 0) {
     length = 1;
   }
@@ -100,13 +102,13 @@ return_current_path_and_name:
 char *CBP_ConcatPaths(int count, ...) {
   va_list args;
   char *res = NULL;
-  u64 path_length = 0;
+  uint64_t path_length = 0;
 
   va_start(args, count);
 
   for (int i = 0; i < count; i++) {
     char *segment = va_arg(args, char *);
-    u64 segment_len = strlen(segment);
+    uint64_t segment_len = strlen(segment);
     if (res == NULL) {
       res = calloc(segment_len + 1, sizeof(char));
       if (res == NULL) {

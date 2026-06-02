@@ -12,26 +12,23 @@ include_directories(./include)
 
 add_library(cbcparser SHARED
     src/files.c
-    # src/hashmap.c
     src/errors.c
     src/arithmetics.c
     src/date.c
-    # src/parser/instances.c
-    # src/parser/lex.c
-    src/parser/lex_new.c
-    src/parser/instances_new.c
-    src/array_new.c
-    src/hashmap_new.c
-    src/models_new.c
+    src/parser/lex.c
+    src/parser/instances.c
+    src/array.c
+    src/hashmap.c
+    src/models.c
 )
 target_link_libraries(cbcparser PRIVATE Threads::Threads)
 
 # C-beancount-parser is intended to be a shared library.
 
-# add_executable(
-#    cbp
-#    src/main.c
-# )
+add_executable(
+   cbp
+   src/main.c
+)
 
-# target_link_libraries(cbp PRIVATE cbcparser)
+target_link_libraries(cbp PRIVATE cbcparser)
 

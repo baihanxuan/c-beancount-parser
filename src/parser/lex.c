@@ -3,17 +3,14 @@
 // See the COPYING file for details.
 
 #include "arithmetics.h"
-#include "array_new.h"
+#include "array.h"
 #include "date.h"
 #include "errors.h"
 #include "files.h"
-// #include "hashmap.h"
-#include "hashmap_new.h"
+#include "hashmap.h"
 #include "macros.h"
-// #include "object.h"
-#include "models_new.h"
-// #include "parser.h"
-#include "parser_new.h"
+#include "models.h"
+#include "parser.h"
 #include <dirent.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -90,7 +87,7 @@ int cbp_Tokenize(CBP_Array *arr, const char *line) {
   int is_in_doubleQuotes = 0;
   const char *start = NULL;
 
-  for (u64 i = 0; line[i] != '\0'; i++) {
+  for (uint64_t i = 0; line[i] != '\0'; i++) {
     char c = line[i];
 
     if (c == ';') {
@@ -104,7 +101,7 @@ int cbp_Tokenize(CBP_Array *arr, const char *line) {
         is_in_doubleQuotes = 1;
         start = &line[i + 1];
       } else {
-        u64 length = &line[i] - start;
+        uint64_t length = &line[i] - start;
         CBP_Array_PushStringFromRange(arr, start, length);
         start = NULL;
         is_in_doubleQuotes = 0;
@@ -114,7 +111,7 @@ int cbp_Tokenize(CBP_Array *arr, const char *line) {
 
     if ((c == ' ' || c == '\t') && !is_in_doubleQuotes) {
       if (start != NULL) {
-        u64 length = &line[i] - start;
+        uint64_t length = &line[i] - start;
         CBP_Array_PushStringFromRange(arr, start, length);
         start = NULL;
       }
