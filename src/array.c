@@ -2,10 +2,10 @@
 // This file is part of c-beancount-parser, licensed under GNU GPLv2 Only.
 // See the COPYING file for details.
 
-#include "array_new.h"
+#include "array.h"
 #include "data.h"
 #include "macros.h"
-#include "models_new.h"
+#include "models.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

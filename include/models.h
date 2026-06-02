@@ -5,9 +5,10 @@
 #ifndef HX_CBP_MODELS_H
 #define HX_CBP_MODELS_H
 
-#include "array_new.h"
+#include "array.h"
 #include "date.h"
-#include "hashmap_new.h"
+#include "hashmap.h"
+#include <stdint.h>
 
 typedef struct {
   char *name;
@@ -18,9 +19,9 @@ typedef struct {
 
 typedef struct {
   char *account;
-  long long amount;
+  int64_t amount;
   char *currency;
-  long long quoted_amount;
+  int64_t quoted_amount;
   char *quoted_currency;
 } CBP_BeancountPosting;
 

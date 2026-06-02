@@ -2,11 +2,11 @@
 // This file is part of c-beancount-parser, licensed under GNU GPLv2 Only.
 // See the COPYING file for details.
 
-#include "hashmap_new.h"
-#include "array_new.h"
+#include "hashmap.h"
+#include "array.h"
 #include "data.h"
 #include "macros.h"
-#include "models_new.h"
+#include "models.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +17,7 @@
 
 // begin internal functions
 
-CBP_HashCell* cbp_HashMap_GetHashCell() {
+CBP_HashCell *cbp_HashMap_GetHashCell() {
   CBP_HashCell *cell = calloc(1, sizeof(CBP_HashCell));
   if (cell == NULL) {
     return NULL;
@@ -27,13 +27,13 @@ CBP_HashCell* cbp_HashMap_GetHashCell() {
   return cell;
 }
 
-int cbp_HashMap_Hash(const char *key, u64 *hash) {
+int cbp_HashMap_Hash(const char *key, uint64_t *hash) {
   if (key == NULL || hash == NULL) {
     goto return_err;
   }
 
-  u64 result = 0;
-  for (u64 i = 0; i < strlen(key); i++) {
+  uint64_t result = 0;
+  for (uint64_t i = 0; i < strlen(key); i++) {
     result = (result * HASHMAP_PRIME) + key[i];
   }
   *hash = result;
@@ -94,11 +94,7 @@ int cbp_HashMap_CopyValue(CBP_HashCell *cell, const CBP_Data value) {
       return HX_ERR;
     }
     return CBP_Models_CopyEntry(cell->value.data.ptr, value.data.ptr);
-  case NIL:
-    if (cell->key != NULL) {
-      free(cell->key);
-      cell->key = NULL;
-    }
+  default:
     break;
   }
   return HX_OK;
@@ -109,6 +105,7 @@ int cbp_HashMap_Update(CBP_HashCell *cell, const CBP_Data value,
   if (!is_new_cell) {
     cbp_HashMap_CleanupValue(cell);
   }
+
   cell->value.type = value.type;
 
   return cbp_HashMap_CopyValue(cell, value);
@@ -134,20 +131,18 @@ int CBP_HashMap_Upsert(CBP_HashMap *hashmap, const char *key,
   if (hashmap == NULL || key == NULL) {
     return HX_ERR;
   }
-  u64 hash;
+  uint64_t hash;
   if (cbp_HashMap_Hash(key, &hash) != HX_OK) {
     return HX_ERR;
   }
-  u64 pool_index = hash % POOL_SIZE;
+  uint64_t pool_index = hash % POOL_SIZE;
   CBP_HashCell *cell = &hashmap->pool[pool_index];
-  do {
+  while (cell->next != NULL) {
     if (cell->key != NULL && strcmp(cell->key, key) == 0) {
       return cbp_HashMap_Update(cell, value, false);
     }
-    if (cell->next != NULL) {
-      cell = cell->next;
-    }
-  } while (cell->next != NULL);
+    cell = cell->next;
+  }
 
   if (cell->key != NULL && strcmp(cell->key, key) == 0) {
     return cbp_HashMap_Update(cell, value, false);
@@ -168,18 +163,58 @@ int CBP_HashMap_Upsert(CBP_HashMap *hashmap, const char *key,
   return cbp_HashMap_Update(target_cell, value, true);
 }
 
-int CBP_HashMap_Delete(CBP_HashMap *hash_map, const char *key) {
-  return CBP_HashMap_Upsert(hash_map, key, (CBP_Data){.type = NIL});
+int CBP_HashMap_Delete(CBP_HashMap *hashmap, const char *key) {
+  if (hashmap == NULL || key == NULL) {
+    return HX_ERR;
+  }
+  uint64_t hash;
+  if (cbp_HashMap_Hash(key, &hash) != HX_OK) {
+    return HX_ERR;
+  }
+  uint64_t pool_index = hash % POOL_SIZE;
+  CBP_HashCell *cell = &hashmap->pool[pool_index];
+  CBP_HashCell *prev = NULL;
+  bool is_first_child = true;
+  while (cell->next != NULL) {
+    if (cell->key != NULL && strcmp(cell->key, key) == 0) {
+      free(cell->key);
+      cell->key = NULL;
+      cbp_HashMap_CleanupValue(cell);
+      if (prev != NULL) {
+        prev->next = cell->next;
+      }
+      if (!is_first_child) {
+        free(cell);
+      }
+      break;
+    }
+    prev = cell;
+    cell = cell->next;
+    is_first_child = false;
+  }
+
+  if (cell->key != NULL && strcmp(cell->key, key) == 0) {
+    free(cell->key);
+    cell->key = NULL;
+    cbp_HashMap_CleanupValue(cell);
+    if (prev != NULL) {
+      prev->next = cell->next;
+    }
+    if (!is_first_child) {
+      free(cell);
+    }
+  }
+  return HX_OK;
 }
 
 CBP_Data *CBP_HashMap_RetrieveByKey(const CBP_HashMap *hash_map,
                                     const char *key) {
-  u64 hash;
+  uint64_t hash;
   CBP_Data *value = NULL;
   if (cbp_HashMap_Hash(key, &hash) != HX_OK) {
     return NULL;
   }
-  u64 pool_index = hash % POOL_SIZE;
+  uint64_t pool_index = hash % POOL_SIZE;
 
   const CBP_HashCell *cell = &hash_map->pool[pool_index];
   do {
@@ -249,6 +284,10 @@ int CBP_HashMap_Copy(CBP_HashMap *dst_hashmap, const CBP_HashMap *src_hashmap) {
     CBP_HashCell *dst_cell = dst_hashmap->pool + i;
     CBP_HashCell *cell = src_hashmap->pool + i;
     while (cell != NULL && dst_cell != NULL) {
+      if (cell->key == NULL) {
+        cell = cell->next;
+        continue;
+      }
       dst_cell->key = strdup(cell->key);
       cbp_HashMap_CopyValue(dst_cell, cell->value);
       if (cell->next != NULL) {

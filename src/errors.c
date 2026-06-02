@@ -3,11 +3,10 @@
 // See the COPYING file for details.
 
 #include "errors.h"
-#include "array_new.h"
+#include "array.h"
 #include "macros.h"
-// #include "object.h"
 #include "data.h"
-#include "parser_new.h"
+#include "parser.h"
 #include <stdarg.h>
 #include <stdio.h>
 
